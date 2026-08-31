@@ -1,0 +1,26 @@
+name: AfriLance CI
+
+on:
+push:
+branches:
+- main
+- develop
+pull_request:
+branches:
+- main
+- develop
+
+jobs:
+ci:
+runs-on: ubuntu-latest
+
+steps:
+  - name: Checkout repository
+    uses: actions/checkout@v4
+
+  - name: Check project structure
+    run: |
+      test -d client
+      test -d server
+      test -f README.md
+      echo "AfriLance project structure is valid"
