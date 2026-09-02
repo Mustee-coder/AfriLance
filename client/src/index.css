@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+@theme {
+  --color-afri-primary: #10b981;
+  --color-afri-primary-dark: #059669;
+  --color-afri-text: #111827;
+  --color-afri-background: #f9fafb;
+  --color-afri-border: #e5e7eb;
+  --color-afri-error: #ef4444;
+}
+
+
+/* index.css */
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+}
+
+#root {
+  overflow-x: hidden;
+}
