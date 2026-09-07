@@ -39,21 +39,24 @@ const Login = () => {
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    try {
-      setServerError("");
+  try {
+    setServerError("");
 
-      await login(data);
+    const loggedInUser = await login(data);
 
+    if (loggedInUser.role === "client") {
+      navigate("/client/dashboard");
+    } else {
       navigate("/dashboard");
-    } catch (error) {
-      setServerError(
-        error instanceof Error
-          ? error.message
-          : "Login failed. Please try again.",
-      );
     }
-  };
-
+  } catch (error) {
+    setServerError(
+      error instanceof Error
+        ? error.message
+        : "Login failed. Please try again.",
+    );
+  }
+};
   return (
     <main className="min-h-screen bg-slate-50">
       <div className="grid min-h-screen lg:grid-cols-[1.05fr_0.95fr]">

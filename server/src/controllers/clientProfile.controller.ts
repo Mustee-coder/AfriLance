@@ -1,30 +1,40 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import mongoose from "mongoose";
+
+import { AuthenticatedRequest } from "../middleware/auth.middleware.js";
 import { ClientProfile } from "../models/clientProfile.model.js";
+
 import {
   createClientProfileSchema,
   updateClientProfileSchema,
 } from "../validators/clientProfile.validator.js";
-import { AuthenticatedRequest } from "../middleware/auth.middleware.js";
 
 export const createClientProfile = async (
   req: AuthenticatedRequest,
   res: Response,
 ): Promise<void> => {
   try {
-    const validation = createClientProfileSchema.safeParse(req.body);
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+      return;
+    }
 
-    if (!validation.success) {
+    const parsed = createClientProfileSchema.safeParse(req.body);
+
+    if (!parsed.success) {
       res.status(400).json({
         success: false,
         message: "Validation failed",
-        errors: validation.error.flatten().fieldErrors,
+        errors: parsed.error.flatten().fieldErrors,
       });
       return;
     }
 
     const existingProfile = await ClientProfile.findOne({
-      user: req.user!.userId,
+      user: req.user.userId,
     });
 
     if (existingProfile) {
@@ -36,8 +46,8 @@ export const createClientProfile = async (
     }
 
     const profile = await ClientProfile.create({
-      user: req.user!.userId,
-      ...validation.data,
+      user: req.user.userId,
+      ...parsed.data,
     });
 
     res.status(201).json({
@@ -50,7 +60,7 @@ export const createClientProfile = async (
 
     res.status(500).json({
       success: false,
-      message: "Failed to create client profile",
+      message: "Internal server error",
     });
   }
 };
@@ -60,8 +70,16 @@ export const getMyClientProfile = async (
   res: Response,
 ): Promise<void> => {
   try {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+      return;
+    }
+
     const profile = await ClientProfile.findOne({
-      user: req.user!.userId,
+      user: req.user.userId,
     }).populate("user", "firstName lastName email role");
 
     if (!profile) {
@@ -77,11 +95,11 @@ export const getMyClientProfile = async (
       profile,
     });
   } catch (error) {
-    console.error("Get my client profile error:", error);
+    console.error("Get client profile error:", error);
 
     res.status(500).json({
       success: false,
-      message: "Failed to get client profile",
+      message: "Internal server error",
     });
   }
 };
@@ -91,19 +109,27 @@ export const updateClientProfile = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const validation = updateClientProfileSchema.safeParse(req.body);
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+      return;
+    }
 
-    if (!validation.success) {
+    const parsed = updateClientProfileSchema.safeParse(req.body);
+
+    if (!parsed.success) {
       res.status(400).json({
         success: false,
         message: "Validation failed",
-        errors: validation.error.flatten().fieldErrors,
+        errors: parsed.error.flatten().fieldErrors,
       });
       return;
     }
 
     const profile = await ClientProfile.findOne({
-      user: req.user!.userId,
+      user: req.user.userId,
     });
 
     if (!profile) {
@@ -114,7 +140,7 @@ export const updateClientProfile = async (
       return;
     }
 
-    Object.assign(profile, validation.data);
+    Object.assign(profile, parsed.data);
 
     await profile.save();
 
@@ -128,7 +154,7 @@ export const updateClientProfile = async (
 
     res.status(500).json({
       success: false,
-      message: "Failed to update client profile",
+      message: "Internal server error",
     });
   }
 };
@@ -138,8 +164,16 @@ export const deleteClientProfile = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const profile = await ClientProfile.findOne({
-      user: req.user!.userId,
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+      return;
+    }
+
+    const profile = await ClientProfile.findOneAndDelete({
+      user: req.user.userId,
     });
 
     if (!profile) {
@@ -150,8 +184,6 @@ export const deleteClientProfile = async (
       return;
     }
 
-    await profile.deleteOne();
-
     res.status(200).json({
       success: true,
       message: "Client profile deleted successfully",
@@ -161,13 +193,13 @@ export const deleteClientProfile = async (
 
     res.status(500).json({
       success: false,
-      message: "Failed to delete client profile",
+      message: "Internal server error",
     });
   }
 };
 
 export const getClientProfileByUserId = async (
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response,
 ): Promise<void> => {
   try {
@@ -185,7 +217,10 @@ export const getClientProfileByUserId = async (
 
     const profile = await ClientProfile.findOne({
       user: userId,
-    }).populate("user", "firstName lastName role");
+    }).populate(
+      "user",
+      "firstName lastName role",
+    );
 
     if (!profile) {
       res.status(404).json({
@@ -200,11 +235,14 @@ export const getClientProfileByUserId = async (
       profile,
     });
   } catch (error) {
-    console.error("Get client profile by user ID error:", error);
+    console.error(
+      "Get client profile by user ID error:",
+      error,
+    );
 
     res.status(500).json({
       success: false,
-      message: "Failed to get client profile",
+      message: "Internal server error",
     });
   }
 };

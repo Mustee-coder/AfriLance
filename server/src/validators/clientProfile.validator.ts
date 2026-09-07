@@ -24,7 +24,8 @@ export const createClientProfileSchema = z.object({
     .string()
     .trim()
     .url("Website must be a valid URL")
-    .optional(),
+    .optional()
+    .or(z.literal("")),
 
   country: z
     .string()
@@ -41,3 +42,11 @@ export const createClientProfileSchema = z.object({
 
 export const updateClientProfileSchema =
   createClientProfileSchema.partial();
+
+export type CreateClientProfileInput = z.infer<
+  typeof createClientProfileSchema
+>;
+
+export type UpdateClientProfileInput = z.infer<
+  typeof updateClientProfileSchema
+>;

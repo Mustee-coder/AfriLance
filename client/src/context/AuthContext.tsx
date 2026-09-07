@@ -20,7 +20,7 @@ import type { User } from "../types/auth";
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (data: LoginData) => Promise<void>;
+  login: (data: LoginData) => Promise<User>;
   register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -54,9 +54,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     initializeAuth();
   }, []);
 
-  const login = async (data: LoginData) => {
+  const login = async (data: LoginData): Promise<User> => {
     const response = await loginUser(data);
+
     setUser(response.user);
+
+    return response.user;
   };
 
   const register = async (data: RegisterData) => {

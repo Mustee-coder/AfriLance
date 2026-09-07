@@ -3,9 +3,9 @@ import { Router } from "express";
 import {
   createClientProfile,
   getMyClientProfile,
-  getClientProfileByUserId,
   updateClientProfile,
   deleteClientProfile,
+  getClientProfileByUserId,
 } from "../controllers/clientProfile.controller.js";
 
 import { authenticate } from "../middleware/auth.middleware.js";
@@ -13,7 +13,6 @@ import { authorize } from "../middleware/role.middleware.js";
 
 const router = Router();
 
-// Create client profile
 router.post(
   "/",
   authenticate,
@@ -21,7 +20,6 @@ router.post(
   createClientProfile,
 );
 
-// Get my client profile
 router.get(
   "/me",
   authenticate,
@@ -29,14 +27,6 @@ router.get(
   getMyClientProfile,
 );
 
-// Get client profile by user ID
-router.get(
-  "/user/:userId",
-  authenticate,
-  getClientProfileByUserId,
-);
-
-// Update my client profile
 router.patch(
   "/me",
   authenticate,
@@ -44,12 +34,17 @@ router.patch(
   updateClientProfile,
 );
 
-// Delete my client profile
 router.delete(
   "/me",
   authenticate,
   authorize("client"),
   deleteClientProfile,
+);
+
+router.get(
+  "/user/:userId",
+  authenticate,
+  getClientProfileByUserId,
 );
 
 export default router;
