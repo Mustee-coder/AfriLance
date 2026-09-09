@@ -19,6 +19,8 @@ import {
   useMyJobs,
   useDeleteJob,
 } from "@/hooks/useJobs";
+import EmptyState from "@/components/ui/EmptyState";
+import ErrorState from "@/components/ui/ErrorState";
 
 const formatBudget = (
   budget: number,
@@ -140,54 +142,44 @@ const MyJobs = () => {
         )}
 
         {/* Error */}
-        {isError && !isLoading && (
-          <div className="rounded-2xl border border-red-100 bg-white p-8 text-center shadow-sm">
-            <p className="font-semibold text-slate-900">
-              Unable to load your jobs
-            </p>
-
-            <p className="mt-2 text-sm text-slate-500">
-              Something went wrong while fetching your jobs.
-            </p>
-
-            <button
-              type="button"
-              onClick={() => refetch()}
-              className="mt-5 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-            >
-              <RefreshCw size={16} />
-              Try Again
-            </button>
-          </div>
-        )}
-
+        {/* Error */}
+{isError && !isLoading && (
+  <div className="mt-8">
+    <ErrorState
+      title="Unable to load your jobs"
+      description="Something went wrong while fetching your jobs."
+      action={
+        <button
+          type="button"
+          onClick={() => refetch()}
+          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+        >
+          <RefreshCw size={16} />
+          Try Again
+        </button>
+      }
+    />
+  </div>
+)}
         {/* Empty */}
-        {!isLoading && !isError && jobs.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-              <BriefcaseBusiness size={26} />
-            </div>
-
-            <h2 className="mt-5 text-xl font-bold text-slate-950">
-              No jobs yet
-            </h2>
-
-            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
-              You haven't posted any jobs yet. Create your first job and start
-              finding talented developers.
-            </p>
-
-            <button
-              type="button"
-              onClick={() => navigate("/client/jobs/new")}
-              className="mt-6 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-700"
-            >
-              <Plus size={18} />
-              Post Your First Job
-            </button>
-          </div>
-        )}
-
+  {!isLoading && !isError && jobs.length === 0 && (
+  <div className="mt-8">
+    <EmptyState
+      title="No jobs yet"
+      description="You haven't posted any jobs yet. Create your first job and start finding talented developers."
+      action={
+        <button
+          type="button"
+          onClick={() => navigate("/client/jobs/new")}
+          className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-700"
+        >
+          <Plus size={18} />
+          Post Your First Job
+        </button>
+      }
+    />
+  </div>
+)}
         {/* Jobs */}
         {!isLoading && !isError && jobs.length > 0 && (
           <>

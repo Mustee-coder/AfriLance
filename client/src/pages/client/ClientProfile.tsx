@@ -13,7 +13,7 @@ import {
   Save,
   X,
 } from "lucide-react";
-
+import ErrorState from "@/components/ui/ErrorState";
 import {
   useClientProfile,
   useUpdateClientProfile,
@@ -121,32 +121,27 @@ const ClientProfile = () => {
   }
 
   if (isError) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
-        <div className="w-full max-w-md rounded-3xl border border-red-200 bg-white p-8 text-center shadow-sm">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-500">
-            <Building2 size={25} />
-          </div>
-
-          <h1 className="mt-5 text-xl font-bold text-slate-900">
-            Unable to load profile
-          </h1>
-
-          <p className="mt-2 text-sm leading-6 text-slate-500">
-            We couldn't load your company profile right now.
-          </p>
-
-          <button
-            type="button"
-            onClick={() => refetch()}
-            className="mt-6 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
-          >
-            Try Again
-          </button>
-        </div>
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
+      <div className="w-full max-w-md">
+        <ErrorState
+          title="Unable to load profile"
+          description="We couldn't load your company profile right now. Please try again."
+          action={
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
+            >
+              Try Again
+            </button>
+          }
+        />
       </div>
-    );
-  }
+    </div>
+  );
+}
+
 
   if (!profile) {
     return (

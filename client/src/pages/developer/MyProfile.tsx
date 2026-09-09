@@ -10,6 +10,7 @@ import {
   Trash2,
   UserRound,
 } from "lucide-react";
+import EmptyState from "@/components/ui/EmptyState";
 
 import {
   useCreateDeveloperProfile,
@@ -494,21 +495,13 @@ const MyProfile = () => {
               </div>
 
               {portfolio.length === 0 ? (
-                <div className="mt-6 rounded-2xl border border-dashed border-slate-300 p-8 text-center">
-                  <BriefcaseBusiness
-                    className="mx-auto text-slate-400"
-                    size={28}
-                  />
-
-                  <p className="mt-3 text-sm font-medium text-slate-600">
-                    No portfolio projects yet
-                  </p>
-
-                  <p className="mt-1 text-xs text-slate-400">
-                    Add your best projects to strengthen your profile.
-                  </p>
-                </div>
-              ) : (
+  <div className="mt-6">
+    <EmptyState
+      title="No portfolio projects yet"
+      description="Add your best projects to strengthen your profile."
+    />
+  </div>
+) : (
                 <div className="mt-6 space-y-5">
                   {portfolio.map((project, index) => (
                     <div

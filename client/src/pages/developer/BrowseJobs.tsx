@@ -9,6 +9,8 @@ import { useMemo, useState } from "react";
 
 import { useJobs } from "@/hooks/useJobs";
 import { useNavigate } from "react-router-dom";
+import EmptyState from "@/components/ui/EmptyState";
+import ErrorState from "@/components/ui/ErrorState";
 
 const BrowseJobs = () => {
 const navigate = useNavigate();
@@ -112,30 +114,23 @@ const navigate = useNavigate();
           )}
 
           {/* Error */}
-          {!isLoading && isError && (
-            <div className="mt-8 rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-100 text-red-600">
-                <BriefcaseBusiness size={26} />
-              </div>
-
-              <h2 className="mt-5 text-lg font-bold text-red-800">
-                Failed to load jobs
-              </h2>
-
-              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-red-600">
-                We couldn't load available jobs right now. Please try again.
-              </p>
-
-              <button
-                type="button"
-                onClick={() => refetch()}
-                className="mt-5 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700"
-              >
-                Try Again
-              </button>
-            </div>
-          )}
-
+         {!isLoading && isError && (
+  <div className="mt-8">
+    <ErrorState
+      title="Failed to load jobs"
+      description="We couldn't load available jobs right now. Please try again."
+      action={
+        <button
+          type="button"
+          onClick={() => refetch()}
+          className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700"
+        >
+          Try Again
+        </button>
+      }
+    />
+  </div>
+)}
           {/* Jobs */}
           {!isLoading &&
             !isError &&
@@ -252,28 +247,25 @@ const navigate = useNavigate();
               </>
             )}
 
-          {/* Empty */}
-          {!isLoading &&
-            !isError &&
-            filteredJobs.length === 0 && (
-              <div className="mt-8 rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-                  <BriefcaseBusiness size={26} />
-                </div>
-
-                <h2 className="mt-5 text-lg font-bold text-slate-900">
-                  {search
-                    ? "No matching jobs"
-                    : "No jobs available yet"}
-                </h2>
-
-                <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
-                  {search
-                    ? "Try another search term or search for a different skill."
-                    : "New opportunities will appear here when clients post jobs."}
-                </p>
-              </div>
-            )}
+         {/* Empty */}
+{!isLoading &&
+  !isError &&
+  filteredJobs.length === 0 && (
+    <div className="mt-8">
+      <EmptyState
+        title={
+          search
+            ? "No matching jobs"
+            : "No jobs available yet"
+        }
+        description={
+          search
+            ? "Try another search term or search for a different skill."
+            : "New opportunities will appear here when clients post jobs."
+        }
+      />
+    </div>
+  )}
         </div>
       </main>
     </div>

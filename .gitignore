@@ -8,3 +8,9 @@ coverage/
 *.log
 
 
+
+# Local authentication cookies
+server/cookies.txt
+server/client-cookies.txt
+server/developer2-cookies.txt
+server/*-cookies.txt

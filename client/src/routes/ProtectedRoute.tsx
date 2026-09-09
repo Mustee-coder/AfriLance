@@ -1,5 +1,7 @@
+
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuthContext } from "../context/AuthContext";
+import LoadingSpinner from "../components/ui/LoadingSpinner";
 
 interface ProtectedRouteProps {
   allowedRoles?: ("developer" | "client" | "admin")[];
@@ -9,7 +11,7 @@ const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
   const { user, loading } = useAuthContext();
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <LoadingSpinner />;
   }
 
   if (!user) {

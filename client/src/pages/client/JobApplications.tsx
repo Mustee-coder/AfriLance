@@ -12,7 +12,8 @@ import {
   XCircle,
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-
+import EmptyState from "@/components/ui/EmptyState";
+import ErrorState from "@/components/ui/ErrorState";
 import {
   useJobApplications,
   useUpdateApplicationStatus,
@@ -111,40 +112,33 @@ const JobApplications = () => {
   if (isError) {
     return (
       <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-2xl rounded-3xl border border-red-100 bg-white p-8 text-center shadow-sm">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-red-50 text-red-600">
-            <XCircle size={28} />
-          </div>
+       
+         <div className="mx-auto max-w-2xl">
+  <ErrorState
+    title="Unable to load applications"
+    description="Something went wrong while fetching applications for this job."
+    action={
+      <div className="flex flex-col justify-center gap-3 sm:flex-row">
+        <button
+          type="button"
+          onClick={() => refetch()}
+          className="inline-flex items-center justify-center rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+        >
+          Try Again
+        </button>
 
-          <h1 className="mt-5 text-xl font-bold text-slate-900">
-            Unable to load applications
-          </h1>
-
-          <p className="mt-2 text-sm leading-6 text-slate-500">
-            Something went wrong while fetching applications
-            for this job.
-          </p>
-
-          <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
-            <button
-              type="button"
-              onClick={() => refetch()}
-              className="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-            >
-              Try Again
-            </button>
-
-            <button
-              type="button"
-              onClick={() =>
-                navigate("/client/jobs")
-              }
-              className="rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-            >
-              Back to My Jobs
-            </button>
-          </div>
-        </div>
+        <button
+          type="button"
+          onClick={() => navigate("/client/jobs")}
+          className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+        >
+          Back to My Jobs
+        </button>
+      </div>
+    }
+  />
+</div>
+      
       </main>
     );
   }
@@ -193,35 +187,25 @@ const JobApplications = () => {
         </motion.div>
 
         {/* Empty */}
-        {applications.length === 0 && (
-          <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
-              <Send size={28} />
-            </div>
-
-            <h2 className="mt-5 text-xl font-bold text-slate-950">
-              No applications yet
-            </h2>
-
-            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
-              Developers haven't submitted any proposals for
-              this job yet. Check back later.
-            </p>
-
-            <button
-              type="button"
-              onClick={() =>
-                navigate(`/jobs/${jobId}`)
-              }
-              className="mt-6 inline-flex items-center gap-2 rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-            >
-              <ArrowLeft size={17} />
-              Back to Job
-            </button>
-          </div>
-        )}
-
-        {/* Applications */}
+       {applications.length === 0 && (
+  <div className="mt-8">
+    <EmptyState
+      title="No applications yet"
+      description="Developers haven't submitted any proposals for this job yet. Check back later."
+      action={
+        <button
+          type="button"
+          onClick={() => navigate(`/jobs/${jobId}`)}
+          className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+        >
+          <ArrowLeft size={17} />
+          Back to Job
+        </button>
+      }
+    />
+  </div>
+)}
+  {/* Applications */}
         {applications.length > 0 && (
           <div className="space-y-5">
             {applications.map((application, index) => {

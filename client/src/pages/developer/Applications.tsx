@@ -17,6 +17,8 @@ import {
   useMyApplications,
   useWithdrawApplication,
 } from "@/hooks/useApplications";
+import EmptyState from "@/components/ui/EmptyState";
+import ErrorState from "@/components/ui/ErrorState";
 
 const statusConfig = {
   pending: {
@@ -91,33 +93,26 @@ const Applications = () => {
   }
 
   if (isError) {
-    return (
-      <div className="min-h-screen bg-slate-50 p-5 sm:p-8">
-        <div className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-600">
-            <XCircle size={26} />
-          </div>
-
-          <h1 className="mt-5 text-xl font-bold text-slate-900">
-            Failed to load applications
-          </h1>
-
-          <p className="mt-2 text-sm text-slate-500">
-            Something went wrong while loading your applications.
-          </p>
-
-          <button
-            type="button"
-            onClick={() => refetch()}
-            className="mt-6 rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-          >
-            Try Again
-          </button>
-        </div>
+  return (
+    <div className="min-h-screen bg-slate-50 p-5 sm:p-8">
+      <div className="mx-auto max-w-2xl">
+        <ErrorState
+          title="Failed to load applications"
+          description="Something went wrong while loading your applications."
+          action={
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              Try Again
+            </button>
+          }
+        />
       </div>
-    );
-  }
-
+    </div>
+  );
+}
   const applications = data?.applications ?? [];
 
   return (
@@ -141,22 +136,14 @@ const Applications = () => {
           </div>
 
           {/* Empty */}
-          {applications.length === 0 ? (
-            <div className="mt-8 rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-sm">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
-                <BriefcaseBusiness size={28} />
-              </div>
-
-              <h2 className="mt-5 text-xl font-bold text-slate-900">
-                No applications yet
-              </h2>
-
-              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
-                You haven't applied to any jobs yet. Browse available jobs and
-                submit your first proposal.
-              </p>
-            </div>
-          ) : (
+{applications.length === 0 ? (
+  <div className="mt-8">
+    <EmptyState
+      title="No applications yet"
+      description="You haven't applied to any jobs yet. Browse available jobs and submit your first proposal."
+    />
+  </div>
+) : (
             <div className="mt-8 space-y-5">
               {applications.map((application, index) => {
                 const job =

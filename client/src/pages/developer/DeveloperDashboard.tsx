@@ -18,6 +18,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 
 import { useDeveloperDashboard } from "@/hooks/useDeveloperDashboard";
+import ErrorState from "@/components/ui/ErrorState";
 
 const DeveloperDashboard = () => {
   const navigate = useNavigate();
@@ -289,25 +290,18 @@ const DeveloperDashboard = () => {
             </section>
 
             {/* Error */}
-            {isError && (
-              <div className="mt-8 flex items-start gap-4 rounded-2xl border border-red-200 bg-red-50 p-5">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-600">
-                  <XCircle size={20} />
-                </div>
-
-                <div>
-                  <h3 className="font-semibold text-red-800">
-                    Failed to load dashboard
-                  </h3>
-
-                  <p className="mt-1 text-sm leading-6 text-red-600">
-                    {error instanceof Error
-                      ? error.message
-                      : "Something went wrong while loading your dashboard."}
-                  </p>
-                </div>
-              </div>
-            )}
+{isError && (
+  <div className="mt-8">
+    <ErrorState
+      title="Failed to load dashboard"
+      description={
+        error instanceof Error
+          ? error.message
+          : "Something went wrong while loading your dashboard."
+      }
+    />
+  </div>
+)}
 
             {/* Stats */}
             <section className="mt-8">
