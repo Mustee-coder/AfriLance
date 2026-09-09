@@ -1,3 +1,5 @@
+
+import { sendApplicationAcceptedEmail } from "../services/email.service.js";
 import type { Response } from "express";
 import mongoose from "mongoose";
 import Application from "../models/application.model.js";
@@ -359,7 +361,12 @@ export const updateApplicationStatus = async (
       return;
     }
 
-    const application = await Application.findById(req.params.id);
+    const application = await Application.findById(
+      req.params.id,
+    ).populate(
+      "developer",
+      "firstName email",
+    );
 
     if (!application) {
       res.status(404).json({
@@ -383,7 +390,8 @@ export const updateApplicationStatus = async (
     if (job.client.toString() !== req.user.userId) {
       res.status(403).json({
         success: false,
-        message: "You do not have permission to update this application",
+        message:
+          "You do not have permission to update this application",
       });
       return;
     }
@@ -392,7 +400,8 @@ export const updateApplicationStatus = async (
     if (application.status !== "pending") {
       res.status(400).json({
         success: false,
-        message: "Only pending applications can be updated",
+        message:
+          "Only pending applications can be updated",
       });
       return;
     }
@@ -427,7 +436,20 @@ export const updateApplicationStatus = async (
 
       // Accept selected application
       application.status = "accepted";
+
       await application.save();
+
+      // Send acceptance email to developer
+      const developer = application.developer as unknown as {
+        firstName: string;
+        email: string;
+      };
+
+      await sendApplicationAcceptedEmail({
+        to: developer.email,
+        developerName: developer.firstName,
+        jobTitle: job.title,
+      });
 
       // Reject all other pending applications
       await Application.updateMany(
@@ -445,6 +467,7 @@ export const updateApplicationStatus = async (
 
       // Move job to in_progress
       job.status = "in_progress";
+
       await job.save();
 
       res.status(200).json({
@@ -465,7 +488,10 @@ export const updateApplicationStatus = async (
       message: "Invalid application status",
     });
   } catch (error) {
-    console.error("Update application status error:", error);
+    console.error(
+      "Update application status error:",
+      error,
+    );
 
     res.status(500).json({
       success: false,

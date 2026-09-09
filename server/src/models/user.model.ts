@@ -3,13 +3,15 @@ import mongoose, { Document, Schema } from "mongoose";
 export type UserRole = "developer" | "client" | "admin";
 
 export interface IUser extends Document {
-firstName: string;
-lastName: string;
-email: string;
-password: string;
-role: UserRole;
-createdAt: Date;
-updatedAt: Date;
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  role: UserRole;
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const userSchema = new Schema<IUser>(
@@ -42,6 +44,15 @@ password: {
   type: String,
   required: true,
   minlength: 6,
+  select: false,
+},
+resetPasswordToken: {
+  type: String,
+  select: false,
+},
+
+resetPasswordExpires: {
+  type: Date,
   select: false,
 },
 

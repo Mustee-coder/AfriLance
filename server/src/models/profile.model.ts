@@ -11,6 +11,14 @@ companyDescription?: string;
 location?: string;
 website?: string;
 avatar?: string;
+
+portfolio?: {
+  _id?: mongoose.Types.ObjectId;
+  title: string;
+  description?: string;
+  url: string;
+  publicId: string;
+}[];
 }
 
 const profileSchema = new Schema<IProfile>(
@@ -72,6 +80,34 @@ avatar: {
   type: String,
   trim: true,
 },
+portfolio: [
+  {
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 100,
+    },
+
+    description: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+    },
+
+    url: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    publicId: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+  },
+],
 
 },
 {

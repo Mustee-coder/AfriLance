@@ -336,3 +336,58 @@ export const getMyJobs = async (
   }
 };
 
+
+
+
+export const completeJob = async (
+  req: AuthenticatedRequest,
+  res: Response,
+): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+      return;
+    }
+
+    const job = await Job.findOne({
+      _id: req.params.id,
+      client: req.user.userId,
+    });
+
+    if (!job) {
+      res.status(404).json({
+        success: false,
+        message: "Job not found or not yours",
+      });
+      return;
+    }
+
+    if (job.status !== "in_progress") {
+      res.status(400).json({
+        success: false,
+        message: "Only in-progress jobs can be marked as completed",
+      });
+      return;
+    }
+
+    job.status = "completed";
+
+    await job.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Job marked as completed successfully",
+      job,
+    });
+  } catch (error) {
+    console.error("Complete job error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};

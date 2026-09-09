@@ -7,6 +7,7 @@ import {
   getJobById,
   updateJob,
   deleteJob,
+  completeJob,
 } from "../controllers/job.controller.js";
 
 import { authenticate } from "../middleware/auth.middleware.js";
@@ -27,6 +28,14 @@ router.get(
   authenticate,
   authorize("client"),
   getMyJobs,
+);
+
+// Only clients can mark their own in-progress jobs as completed
+router.patch(
+  "/:id/complete",
+  authenticate,
+  authorize("client"),
+  completeJob,
 );
 
 // Anyone authenticated can view a single job
