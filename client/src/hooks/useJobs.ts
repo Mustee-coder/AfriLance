@@ -11,6 +11,7 @@ import {
   getJobs,
   getMyJobs,
   updateJob,
+  completeJob,
 } from "@/api/jobs.api";
 
 export const useJobs = () => {
@@ -98,6 +99,28 @@ export const useDeleteJob = () => {
 
       queryClient.removeQueries({
         queryKey: ["job", jobId],
+      });
+    },
+  });
+};
+
+export const useCompleteJob = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (jobId: string) => completeJob(jobId),
+
+    onSuccess: (_data, jobId) => {
+      queryClient.invalidateQueries({
+        queryKey: ["job", jobId],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["jobs"],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["my-jobs"],
       });
     },
   });

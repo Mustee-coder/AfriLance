@@ -12,8 +12,17 @@ import {
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { useJob } from "@/hooks/useJobs";
-import { useMyApplications } from "@/hooks/useApplications";
+import {
+  useJob,
+  useCompleteJob,
+} from "@/hooks/useJobs";
+
+import {
+  useJobApplications,
+  useMyApplications,
+} from "@/hooks/useApplications";
+
+import ReviewForm from "@/components/reviews/ReviewForm";
 import { useAuth } from "@/hooks/useAuth";
 
 const JobDetails = () => {
@@ -27,22 +36,67 @@ const JobDetails = () => {
     isLoading,
     isError,
   } = useJob(id ?? "");
+  const completeJobMutation = useCompleteJob();
 
   const { data: applicationsData } = useMyApplications();
 
+  const { data: jobApplicationsData } =
+    useJobApplications(
+      user?.role === "client" ? id ?? "" : "",
+    );
+
+  const acceptedApplication =
+    user?.role === "client"
+      ? jobApplicationsData?.applications.find(
+          (application) =>
+            application.status === "accepted",
+        )
+      : applicationsData?.applications.find(
+          (application) => {
+            const applicationJobId =
+              typeof application.job === "string"
+                ? application.job
+                : application.job._id;
+
+            return (
+              applicationJobId === job?._id &&
+              application.status === "accepted"
+            );
+          },
+        );
+
+  const acceptedDeveloperId =
+    acceptedApplication &&
+    (typeof acceptedApplication.developer === "string"
+      ? acceptedApplication.developer
+      : acceptedApplication.developer._id);
+
+
+const clientId =
+  typeof job?.client === "string"
+    ? job.client
+    : job?.client._id;
+    
+    const isAcceptedDeveloper =
+  user?.role === "developer" &&
+  acceptedDeveloperId === user.id;
+    
+
   const hasApplied =
     user?.role === "developer" &&
-    applicationsData?.applications.some((application) => {
-      const applicationJobId =
-        typeof application.job === "string"
-          ? application.job
-          : application.job._id;
+    applicationsData?.applications.some(
+      (application) => {
+        const applicationJobId =
+          typeof application.job === "string"
+            ? application.job
+            : application.job._id;
 
-      return (
-        applicationJobId === job?._id &&
-        application.status !== "withdrawn"
-      );
-    });
+        return (
+          applicationJobId === job?._id &&
+          application.status !== "withdrawn"
+        );
+      },
+    );
 
   if (isLoading) {
     return (
@@ -76,7 +130,8 @@ const JobDetails = () => {
           </h1>
 
           <p className="mt-2 text-sm leading-6 text-slate-500">
-            This job may have been removed or is no longer available.
+            This job may have been removed or is no longer
+            available.
           </p>
 
           <button
@@ -97,6 +152,13 @@ const JobDetails = () => {
       </div>
     );
   }
+
+const handleCompleteJob = () => {
+  if (!job) return;
+
+  completeJobMutation.mutate(job._id);
+};
+
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -306,6 +368,19 @@ const JobDetails = () => {
                         <Users size={17} />
                         View Applications
                       </button>
+                      {job.status === "in_progress" && (
+  <button
+    type="button"
+    onClick={handleCompleteJob}
+    disabled={completeJobMutation.isPending}
+    className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+  >
+    <CheckCircle2 size={17} />
+    {completeJobMutation.isPending
+      ? "Completing..."
+      : "Mark as Completed"}
+  </button>
+)}
                     </div>
                   </>
                 )}
@@ -399,6 +474,25 @@ const JobDetails = () => {
               </div>
             </aside>
           </div>
+
+         {/* Reviews */}
+{job.status === "completed" && (
+  <div className="mt-8">
+    {user?.role === "client" && acceptedDeveloperId && (
+      <ReviewForm
+        revieweeId={acceptedDeveloperId}
+        jobId={job._id}
+      />
+    )}
+
+    {isAcceptedDeveloper && clientId && (
+      <ReviewForm
+        revieweeId={clientId}
+        jobId={job._id}
+      />
+    )}
+  </div>
+)}
         </div>
       </main>
     </div>

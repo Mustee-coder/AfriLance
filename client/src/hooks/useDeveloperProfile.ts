@@ -4,13 +4,16 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 
-import {
-  createDeveloperProfile,
-  getMyDeveloperProfile,
-  updateDeveloperProfile,
-  type DeveloperProfileData,
-} from "@/api/developerProfile.api";
 
+
+
+import {
+createDeveloperProfile,
+getMyDeveloperProfile,
+getDeveloperProfileByUserId,
+updateDeveloperProfile,
+type DeveloperProfileData,
+} from "@/api/developerProfile.api";
 export const useDeveloperProfile = () => {
   return useQuery({
     queryKey: ["developer-profile"],
@@ -56,3 +59,15 @@ export const useUpdateDeveloperProfile = () => {
     },
   });
 };
+
+
+export const usePublicDeveloperProfile = (
+userId?: string,
+) => {
+return useQuery({
+queryKey: ["developer-profile", "public", userId],
+queryFn: () => getDeveloperProfileByUserId(userId!),
+enabled: Boolean(userId),
+});
+};
+

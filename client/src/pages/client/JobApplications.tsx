@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Clock3,
   DollarSign,
+  ExternalLink,
   Loader2,
   Send,
   User,
@@ -12,6 +13,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
+
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import {
@@ -25,10 +27,11 @@ const JobApplications = () => {
 
   const jobId = id ?? "";
 
-  const [selectedApplication, setSelectedApplication] = useState<{
-    id: string;
-    status: "accepted" | "rejected";
-  } | null>(null);
+  const [selectedApplication, setSelectedApplication] =
+    useState<{
+      id: string;
+      status: "accepted" | "rejected";
+    } | null>(null);
 
   const {
     data,
@@ -53,7 +56,7 @@ const JobApplications = () => {
 
       setSelectedApplication(null);
     } catch {
-      // Error displayed inside modal
+      // Error is displayed inside the confirmation modal.
     }
   };
 
@@ -112,33 +115,33 @@ const JobApplications = () => {
   if (isError) {
     return (
       <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 lg:px-8">
-       
-         <div className="mx-auto max-w-2xl">
-  <ErrorState
-    title="Unable to load applications"
-    description="Something went wrong while fetching applications for this job."
-    action={
-      <div className="flex flex-col justify-center gap-3 sm:flex-row">
-        <button
-          type="button"
-          onClick={() => refetch()}
-          className="inline-flex items-center justify-center rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-        >
-          Try Again
-        </button>
+        <div className="mx-auto max-w-2xl">
+          <ErrorState
+            title="Unable to load applications"
+            description="Something went wrong while fetching applications for this job."
+            action={
+              <div className="flex flex-col justify-center gap-3 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={() => refetch()}
+                  className="inline-flex items-center justify-center rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                >
+                  Try Again
+                </button>
 
-        <button
-          type="button"
-          onClick={() => navigate("/client/jobs")}
-          className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-        >
-          Back to My Jobs
-        </button>
-      </div>
-    }
-  />
-</div>
-      
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate("/client/jobs")
+                  }
+                  className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  Back to My Jobs
+                </button>
+              </div>
+            }
+          />
+        </div>
       </main>
     );
   }
@@ -146,7 +149,6 @@ const JobApplications = () => {
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-5xl">
-
         {/* Back */}
         <button
           type="button"
@@ -174,8 +176,9 @@ const JobApplications = () => {
           </h1>
 
           <p className="mt-2 text-sm leading-6 text-slate-500 sm:text-base">
-            Review developers who applied to your job and
-            choose the right person for your project.
+            Review developers who applied to your job
+            and choose the right person for your
+            project.
           </p>
 
           <div className="mt-4 inline-flex items-center rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm ring-1 ring-slate-200">
@@ -187,25 +190,28 @@ const JobApplications = () => {
         </motion.div>
 
         {/* Empty */}
-       {applications.length === 0 && (
-  <div className="mt-8">
-    <EmptyState
-      title="No applications yet"
-      description="Developers haven't submitted any proposals for this job yet. Check back later."
-      action={
-        <button
-          type="button"
-          onClick={() => navigate(`/jobs/${jobId}`)}
-          className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-        >
-          <ArrowLeft size={17} />
-          Back to Job
-        </button>
-      }
-    />
-  </div>
-)}
-  {/* Applications */}
+        {applications.length === 0 && (
+          <div className="mt-8">
+            <EmptyState
+              title="No applications yet"
+              description="Developers haven't submitted any proposals for this job yet. Check back later."
+              action={
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate(`/jobs/${jobId}`)
+                  }
+                  className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                >
+                  <ArrowLeft size={17} />
+                  Back to Job
+                </button>
+              }
+            />
+          </div>
+        )}
+
+        {/* Applications */}
         {applications.length > 0 && (
           <div className="space-y-5">
             {applications.map((application, index) => {
@@ -238,14 +244,29 @@ const JobApplications = () => {
                         <User size={21} />
                       </div>
 
-                      <div>
+                      <div className="min-w-0">
                         <h2 className="text-lg font-bold text-slate-950">
                           {developer
                             ? `${developer.firstName} ${developer.lastName}`
                             : "Developer"}
                         </h2>
 
-                        <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
+                        {developer && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              navigate(
+                                `/developers/${developer._id}`,
+                              )
+                            }
+                            className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-600 transition hover:text-emerald-700"
+                          >
+                            View Developer Profile
+                            <ExternalLink size={15} />
+                          </button>
+                        )}
+
+                        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
                           <span className="inline-flex items-center gap-1.5">
                             <User size={14} />
                             Developer

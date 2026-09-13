@@ -174,3 +174,14 @@ export const deleteJob = async (
 
   return response.data;
 };
+
+export const completeJob = async (
+  jobId: string,
+): Promise<UpdateJobResponse> => {
+  const response = await api.patch(
+    `/jobs/${jobId}/complete`,
+  );
+
+  return response.data;
+};
+

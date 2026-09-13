@@ -71,3 +71,14 @@ export const updateDeveloperProfile = async (
 
   return response.data;
 };
+
+
+export const getDeveloperProfileByUserId = async (
+  userId: string,
+): Promise<DeveloperProfileResponse> => {
+  const response = await api.get(
+    `/developer-profiles/user/${userId}`,
+  );
+
+  return response.data;
+};
