@@ -272,7 +272,6 @@ export const getJobReviews = async (
       return;
     }
 
-    
     const reviews = await Review.find({
       job: jobId,
     })
@@ -280,9 +279,20 @@ export const getJobReviews = async (
       .populate("reviewee", "firstName lastName role")
       .sort({ createdAt: -1 });
 
+    const totalReviews = reviews.length;
+
+    const averageRating =
+      totalReviews > 0
+        ? reviews.reduce(
+            (sum, review) => sum + review.rating,
+            0,
+          ) / totalReviews
+        : 0;
+
     res.status(200).json({
       success: true,
-      count: reviews.length,
+      count: totalReviews,
+      averageRating: Number(averageRating.toFixed(1)),
       reviews,
     });
   } catch (error) {
@@ -294,5 +304,3 @@ export const getJobReviews = async (
     });
   }
 };
-
-

@@ -32,3 +32,35 @@ export const logoutUser = async () => {
   const response = await api.post("/auth/logout");
   return response.data;
 }
+
+
+export interface ForgotPasswordData {
+  email: string;
+}
+
+export interface ResetPasswordData {
+  token: string;
+  password: string;
+}
+
+export const forgotPassword = async (
+  data: ForgotPasswordData,
+) => {
+  const response = await api.post(
+    "/auth/forgot-password",
+    data,
+  );
+
+  return response.data;
+};
+
+export const resetPassword = async (
+  data: ResetPasswordData,
+) => {
+  const response = await api.post(
+    "/auth/reset-password",
+    data,
+  );
+
+  return response.data;
+};

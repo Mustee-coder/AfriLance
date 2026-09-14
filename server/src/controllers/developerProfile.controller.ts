@@ -2,6 +2,7 @@ import { Response } from "express";
 import mongoose from "mongoose";
 import { AuthenticatedRequest } from "../middleware/auth.middleware.js";
 import { DeveloperProfile } from "../models/developerProfile.model.js";
+import { uploadToCloudinary } from "../utils/cloudinary.js";
 import {
   createDeveloperProfileSchema,
   updateDeveloperProfileSchema,
@@ -244,3 +245,99 @@ res.status(500).json({
 };
 
 
+
+
+export const uploadPortfolioImages = async (
+  req: AuthenticatedRequest,
+  res: Response,
+): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+      return;
+    }
+
+    const files = req.files as Express.Multer.File[] | undefined;
+
+    if (!files || files.length === 0) {
+      res.status(400).json({
+        success: false,
+        message: "Please upload at least one image",
+      });
+      return;
+    }
+
+    if (files.length > 3) {
+      res.status(400).json({
+        success: false,
+        message: "You can upload a maximum of 3 images",
+      });
+      return;
+    }
+
+    const { projectId } = req.params;
+
+    const profile = await DeveloperProfile.findOne({
+      user: req.user.userId,
+    });
+
+    if (!profile) {
+      res.status(404).json({
+        success: false,
+        message: "Developer profile not found",
+      });
+      return;
+    }
+
+    const project = profile.portfolio.find(
+      (item) => item._id?.toString() === projectId,
+    );
+
+    if (!project) {
+      res.status(404).json({
+        success: false,
+        message: "Portfolio project not found",
+      });
+      return;
+    }
+
+    if (project.images.length + files.length > 3) {
+      res.status(400).json({
+        success: false,
+        message: "A project can have a maximum of 3 images",
+      });
+      return;
+    }
+
+    const uploadedImages = await Promise.all(
+      files.map((file) =>
+        uploadToCloudinary(
+          file.buffer,
+          "afrilance/portfolio",
+        ),
+      ),
+    );
+
+    project.images.push(
+      ...uploadedImages.map((image) => image.secure_url),
+    );
+
+    await profile.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Portfolio images uploaded successfully",
+      project,
+    });
+  } catch (error) {
+    console.error("Upload portfolio images error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};

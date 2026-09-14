@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   BriefcaseBusiness,
@@ -10,55 +9,28 @@ import {
   Trash2,
   UserRound,
 } from "lucide-react";
+
 import EmptyState from "@/components/ui/EmptyState";
 
 import {
   useCreateDeveloperProfile,
   useDeveloperProfile,
   useUpdateDeveloperProfile,
+  useUploadPortfolioImages,
 } from "@/hooks/useDeveloperProfile";
 
 import type {
-  PortfolioProject,
+  PortfolioFormItem,
   ProfileFormData,
 } from "@/types/profile";
 
-const profileSchema = z.object({
-  bio: z
-    .string()
-    .max(2000, "Bio must not exceed 2000 characters")
-    .optional(),
-
-  skills: z
-    .string()
-    .min(1, "Add at least one skill"),
-
-  experience: z
-    .number()
-    .min(0, "Experience cannot be negative")
-    .max(50, "Experience cannot exceed 50 years"),
-
-  hourlyRate: z
-    .number()
-    .min(0, "Hourly rate cannot be negative"),
-
-  availability: z.enum([
-    "available",
-    "busy",
-    "unavailable",
-  ]),
-});
-
-interface PortfolioFormItem {
-  title: string;
-  description: string;
-  projectUrl: string;
-}
+import { profileSchema } from "@/validators/profile.validator";
 
 const emptyPortfolioItem: PortfolioFormItem = {
   title: "",
   description: "",
   projectUrl: "",
+  images: [],
 };
 
 const MyProfile = () => {
@@ -70,11 +42,17 @@ const MyProfile = () => {
   } = useDeveloperProfile();
 
   const createMutation = useCreateDeveloperProfile();
-  const updateMutation = useUpdateDeveloperProfile();
+const updateMutation = useUpdateDeveloperProfile();
+const uploadImagesMutation = useUploadPortfolioImages();
 
   const [portfolio, setPortfolio] = useState<PortfolioFormItem[]>(
     [],
   );
+  
+  const [selectedImages, setSelectedImages] = useState<
+  Record<number, File[]>
+>({});
+
 
   const {
     register,
@@ -93,75 +71,78 @@ const MyProfile = () => {
   });
 
   useEffect(() => {
-    if (!data?.profile) return;
+  if (!data?.profile) return;
 
-    const profile = data.profile;
+  const profile = data.profile;
 
-    reset({
-      bio: profile.bio ?? "",
-      skills: profile.skills.join(", "),
-      experience: profile.experience ?? 0,
-      hourlyRate: profile.hourlyRate ?? 0,
-      availability: profile.availability ?? "available",
-    });
+  reset({
+    bio: profile.bio ?? "",
+    skills: profile.skills.join(", "),
+    experience: profile.experience ?? 0,
+    hourlyRate: profile.hourlyRate ?? 0,
+    availability: profile.availability ?? "available",
+  });
 
-    setPortfolio(
-      (profile.portfolio ?? []).map(
-        (project: PortfolioProject) => ({
-          title: project.title,
-          description: project.description,
-          projectUrl: project.projectUrl ?? "",
-        }),
-      ),
-    );
-  }, [data, reset]);
+  setPortfolio(
+    (profile.portfolio ?? []).map((project) => ({
+      _id: project._id,
+      title: project.title,
+      description: project.description,
+      projectUrl: project.projectUrl ?? "",
+      images: project.images ?? [],
+    })),
+  );
+}, [data, reset]);
 
   const onSubmit = async (formData: ProfileFormData) => {
-    const payload = {
-      bio: formData.bio?.trim() || undefined,
+  const payload = {
+    bio: formData.bio?.trim() || undefined,
 
-      skills: formData.skills
-        .split(",")
-        .map((skill) => skill.trim())
-        .filter(Boolean),
+    skills: formData.skills
+      .split(",")
+      .map((skill) => skill.trim())
+      .filter(Boolean),
 
-      experience: formData.experience,
-      hourlyRate: formData.hourlyRate,
-      availability: formData.availability,
+    experience: formData.experience,
+    hourlyRate: formData.hourlyRate,
+    availability: formData.availability,
 
-      portfolio: portfolio
-        .filter(
-          (project) =>
-            project.title.trim() &&
-            project.description.trim(),
-        )
-        .map((project) => ({
-          title: project.title.trim(),
-          description: project.description.trim(),
-          ...(project.projectUrl.trim()
-            ? {
-                projectUrl: project.projectUrl.trim(),
-              }
-            : {}),
-        })),
-    };
+    portfolio: portfolio
+      .filter(
+        (project) =>
+          project.title.trim() &&
+          project.description.trim(),
+      )
+      .map((project) => ({
+        title: project.title.trim(),
+        description: project.description.trim(),
 
+        ...(project.projectUrl.trim()
+          ? {
+              projectUrl: project.projectUrl.trim(),
+            }
+          : {}),
+
+        images: project.images ?? [],
+      })),
+  };
+  
     try {
       if (data?.profile) {
         await updateMutation.mutateAsync(payload);
       } else {
         await createMutation.mutateAsync(payload);
       }
-   } catch (error) {
-  console.error("Profile save error:", error);
+    } catch (error) {
+      console.error("Profile save error:", error);
 
-  const message =
-    error instanceof Error
-      ? error.message
-      : "Failed to save profile";
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to save profile";
 
-  window.alert(message);
-}
+      window.alert(message);
+    }
   };
 
   const addPortfolio = () => {
@@ -179,7 +160,7 @@ const MyProfile = () => {
 
   const updatePortfolio = (
     index: number,
-    field: keyof PortfolioFormItem,
+    field: "title" | "description" | "projectUrl",
     value: string,
   ) => {
     setPortfolio((current) =>
@@ -193,6 +174,74 @@ const MyProfile = () => {
       ),
     );
   };
+  
+  const handleImageSelect = (
+  index: number,
+  files: FileList | null,
+) => {
+  if (!files) return;
+
+  const newFiles = Array.from(files);
+
+  const currentImages = selectedImages[index] ?? [];
+
+  const remainingSlots = 3 - currentImages.length;
+
+  if (remainingSlots <= 0) {
+    window.alert(
+      "A project can have a maximum of 3 images.",
+    );
+    return;
+  }
+
+  const filesToAdd = newFiles.slice(0, remainingSlots);
+
+  setSelectedImages((current) => ({
+    ...current,
+    [index]: [
+      ...(current[index] ?? []),
+      ...filesToAdd,
+    ],
+  }));
+};
+const handleUploadImages = async (index: number) => {
+  const project = portfolio[index];
+
+  if (!project._id) {
+    window.alert(
+      "Please save your profile before uploading project images.",
+    );
+    return;
+  }
+
+  const images = selectedImages[index] ?? [];
+
+  if (images.length === 0) {
+    window.alert("Please select at least one image.");
+    return;
+  }
+
+  try {
+    await uploadImagesMutation.mutateAsync({
+      projectId: project._id,
+      images,
+    });
+
+    setSelectedImages((current) => ({
+      ...current,
+      [index]: [],
+    }));
+  } catch (error) {
+    console.error("Portfolio image upload error:", error);
+
+    window.alert(
+      error instanceof Error
+        ? error.message
+        : "Failed to upload images.",
+    );
+  }
+};
+
 
   const isSaving =
     createMutation.isPending || updateMutation.isPending;
@@ -225,7 +274,6 @@ const MyProfile = () => {
     <div className="min-h-screen bg-slate-50">
       <main className="p-5 sm:p-8">
         <div className="mx-auto max-w-5xl">
-
           {/* Header */}
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
@@ -270,7 +318,6 @@ const MyProfile = () => {
             onSubmit={handleSubmit(onSubmit)}
             className="mt-8 space-y-6"
           >
-
             {/* Professional Information */}
             <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
               <div className="flex items-center gap-3">
@@ -362,7 +409,6 @@ const MyProfile = () => {
             {/* Experience / Rate / Availability */}
             <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
               <div className="grid gap-6 md:grid-cols-3">
-
                 {/* Experience */}
                 <div>
                   <label
@@ -455,9 +501,7 @@ const MyProfile = () => {
                       Available
                     </option>
 
-                    <option value="busy">
-                      Busy
-                    </option>
+                    <option value="busy">Busy</option>
 
                     <option value="unavailable">
                       Unavailable
@@ -495,17 +539,17 @@ const MyProfile = () => {
               </div>
 
               {portfolio.length === 0 ? (
-  <div className="mt-6">
-    <EmptyState
-      title="No portfolio projects yet"
-      description="Add your best projects to strengthen your profile."
-    />
-  </div>
-) : (
+                <div className="mt-6">
+                  <EmptyState
+                    title="No portfolio projects yet"
+                    description="Add your best projects to strengthen your profile."
+                  />
+                </div>
+              ) : (
                 <div className="mt-6 space-y-5">
                   {portfolio.map((project, index) => (
                     <div
-                      key={index}
+                      key={project._id ?? index}
                       className="rounded-2xl border border-slate-200 p-5"
                     >
                       <div className="flex items-center justify-between">
@@ -566,6 +610,59 @@ const MyProfile = () => {
                           className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10"
                         />
                       </div>
+               <div className="mt-4 rounded-xl border border-dashed border-slate-300 p-4">
+  <label
+    htmlFor={`portfolio-images-${index}`}
+    className="block cursor-pointer text-sm font-semibold text-slate-700"
+  >
+    Project Images
+  </label>
+
+  <p className="mt-1 text-xs text-slate-400">
+    Upload up to 3 images for this project.
+  </p>
+
+  <input
+    id={`portfolio-images-${index}`}
+    type="file"
+    accept="image/jpeg,image/png,image/webp"
+    multiple
+    onChange={(event) =>
+      handleImageSelect(index, event.target.files)
+    }
+    className="mt-3 block w-full text-sm text-slate-500"
+  />
+
+  {(selectedImages[index]?.length ?? 0) > 0 && (
+    <div className="mt-4 space-y-3">
+      <p className="text-xs font-medium text-slate-500">
+        Selected: {selectedImages[index]?.length}/3
+      </p>
+
+      <div className="flex flex-wrap gap-3">
+        {selectedImages[index]?.map((file, fileIndex) => (
+          <div
+            key={`${file.name}-${fileIndex}`}
+            className="rounded-lg bg-slate-100 px-3 py-2 text-xs text-slate-700"
+          >
+            {file.name}
+          </div>
+        ))}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => handleUploadImages(index)}
+        disabled={uploadImagesMutation.isPending}
+        className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {uploadImagesMutation.isPending
+          ? "Uploading..."
+          : "Upload Images"}
+      </button>
+    </div>
+  )}
+</div>
                     </div>
                   ))}
                 </div>

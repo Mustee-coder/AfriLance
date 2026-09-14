@@ -8,6 +8,15 @@ export interface PortfolioProject {
   title: string;
   description: string;
   projectUrl?: string;
+  images: string[];
+}
+
+export interface PortfolioFormItem {
+  _id?: string;
+  title: string;
+  description: string;
+  projectUrl: string;
+  images: string[];
 }
 
 export interface DeveloperProfile {

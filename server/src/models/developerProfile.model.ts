@@ -1,9 +1,11 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
 
 export interface IPortfolioProject {
+  _id?: Types.ObjectId;
   title: string;
   description: string;
   projectUrl?: string;
+  images: string[];
 }
 
 export interface IDeveloperProfile extends Document {
@@ -38,6 +40,14 @@ const portfolioProjectSchema = new Schema<IPortfolioProject>(
       type: String,
       trim: true,
     },
+    images: {
+  type: [String],
+  default: [],
+  validate: {
+    validator: (images: string[]) => images.length <= 3,
+    message: "A project can have a maximum of 3 images",
+  },
+},
   },
   { _id: true },
 );

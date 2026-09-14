@@ -1,9 +1,13 @@
 import { Route, Routes } from "react-router-dom";
 
+
 import Landing from "@/pages/Landing";
 import Login from "@/pages/auth/Login";
 import Register from "@/pages/auth/Register";
+import ForgotPassword from "@/pages/auth/ForgotPassword";
+import ResetPassword from "@/pages/auth/ResetPassword";
 import ProtectedRoute from "@/routes/ProtectedRoute";
+
 
 // Developer
 import DeveloperDashboard from "@/pages/developer/DeveloperDashboard";
@@ -32,6 +36,10 @@ return (
 <Route path="/" element={<Landing />} />
 <Route path="/login" element={<Login />} />
 <Route path="/register" element={<Register />} />
+    <Route
+  path="/forgot-password"
+  element={<ForgotPassword />}
+/>
 
   {/* Protected routes */}
   <Route element={<ProtectedRoute />}>
@@ -40,6 +48,10 @@ return (
       path="/dashboard"
       element={<DeveloperDashboard />}
     />
+    <Route
+  path="/reset-password/:token"
+  element={<ResetPassword />}
+/>
 
     {/* Marketplace */}
     <Route

@@ -1,10 +1,12 @@
 import { Router } from "express";
+import { imageUpload } from "../middleware/upload.middleware.js";
 import {
   createDeveloperProfile,
   getMyDeveloperProfile,
   getDeveloperProfileByUserId,
   updateDeveloperProfile,
   deleteDeveloperProfile,
+  uploadPortfolioImages,
 } from "../controllers/developerProfile.controller.js";
 import { authenticate } from "../middleware/auth.middleware.js";
 import { authorize } from "../middleware/role.middleware.js";
@@ -44,5 +46,15 @@ router.delete(
   authorize("developer"),
   deleteDeveloperProfile,
 );
+
+
+router.post(
+  "/portfolio/:projectId/images",
+  authenticate,
+  authorize("developer"),
+  imageUpload.array("images", 3),
+  uploadPortfolioImages,
+);
+
 
 export default router;

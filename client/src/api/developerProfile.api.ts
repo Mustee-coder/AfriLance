@@ -5,8 +5,8 @@ export interface PortfolioProject {
   title: string;
   description: string;
   projectUrl?: string;
+  images: string[];
 }
-
 export type Availability =
   | "available"
   | "busy"
@@ -78,6 +78,25 @@ export const getDeveloperProfileByUserId = async (
 ): Promise<DeveloperProfileResponse> => {
   const response = await api.get(
     `/developer-profiles/user/${userId}`,
+  );
+
+  return response.data;
+};
+
+
+export const uploadPortfolioImages = async (
+  projectId: string,
+  images: File[],
+): Promise<DeveloperProfileResponse> => {
+  const formData = new FormData();
+
+  images.forEach((image) => {
+    formData.append("images", image);
+  });
+
+  const response = await api.post(
+    `/developer-profiles/portfolio/${projectId}/images`,
+    formData,
   );
 
   return response.data;

@@ -8,12 +8,14 @@ import {
 
 
 import {
-createDeveloperProfile,
-getMyDeveloperProfile,
-getDeveloperProfileByUserId,
-updateDeveloperProfile,
-type DeveloperProfileData,
+  createDeveloperProfile,
+  getMyDeveloperProfile,
+  getDeveloperProfileByUserId,
+  updateDeveloperProfile,
+  uploadPortfolioImages,
+  type DeveloperProfileData,
 } from "@/api/developerProfile.api";
+
 export const useDeveloperProfile = () => {
   return useQuery({
     queryKey: ["developer-profile"],
@@ -71,3 +73,22 @@ enabled: Boolean(userId),
 });
 };
 
+export const useUploadPortfolioImages = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      images,
+    }: {
+      projectId: string;
+      images: File[];
+    }) => uploadPortfolioImages(projectId, images),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["developer-profile"],
+      });
+    },
+  });
+};

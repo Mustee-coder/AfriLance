@@ -12,10 +12,7 @@ import {
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import {
-  useJob,
-  useCompleteJob,
-} from "@/hooks/useJobs";
+import { useJob, useCompleteJob } from "@/hooks/useJobs";
 
 import {
   useJobApplications,
@@ -23,12 +20,14 @@ import {
 } from "@/hooks/useApplications";
 
 import ReviewForm from "@/components/reviews/ReviewForm";
+import ReviewList from "@/components/reviews/ReviewList";
+
+import { useJobReviews } from "@/hooks/useReviews";
 import { useAuth } from "@/hooks/useAuth";
 
 const JobDetails = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-
   const { user } = useAuth();
 
   const {
@@ -36,6 +35,7 @@ const JobDetails = () => {
     isLoading,
     isError,
   } = useJob(id ?? "");
+
   const completeJobMutation = useCompleteJob();
 
   const { data: applicationsData } = useMyApplications();
@@ -44,6 +44,10 @@ const JobDetails = () => {
     useJobApplications(
       user?.role === "client" ? id ?? "" : "",
     );
+
+  const { data: jobReviewsData } = useJobReviews(
+    job?._id,
+  );
 
   const acceptedApplication =
     user?.role === "client"
@@ -71,16 +75,14 @@ const JobDetails = () => {
       ? acceptedApplication.developer
       : acceptedApplication.developer._id);
 
+  const clientId =
+    typeof job?.client === "string"
+      ? job.client
+      : job?.client._id;
 
-const clientId =
-  typeof job?.client === "string"
-    ? job.client
-    : job?.client._id;
-    
-    const isAcceptedDeveloper =
-  user?.role === "developer" &&
-  acceptedDeveloperId === user.id;
-    
+  const isAcceptedDeveloper =
+    user?.role === "developer" &&
+    acceptedDeveloperId === user.id;
 
   const hasApplied =
     user?.role === "developer" &&
@@ -97,6 +99,12 @@ const clientId =
         );
       },
     );
+
+  const handleCompleteJob = () => {
+    if (!job) return;
+
+    completeJobMutation.mutate(job._id);
+  };
 
   if (isLoading) {
     return (
@@ -153,18 +161,10 @@ const clientId =
     );
   }
 
-const handleCompleteJob = () => {
-  if (!job) return;
-
-  completeJobMutation.mutate(job._id);
-};
-
-
   return (
     <div className="min-h-screen bg-slate-50">
       <main className="p-5 sm:p-8">
         <div className="mx-auto max-w-6xl">
-
           {/* Back */}
           <button
             type="button"
@@ -248,7 +248,6 @@ const handleCompleteJob = () => {
 
           {/* Content */}
           <div className="mt-8 grid gap-6 lg:grid-cols-3">
-
             {/* Main */}
             <section className="lg:col-span-2">
               <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
@@ -285,7 +284,6 @@ const handleCompleteJob = () => {
             {/* Sidebar */}
             <aside>
               <div className="sticky top-24 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-
                 {/* Developer Actions */}
                 {user?.role === "developer" && (
                   <>
@@ -368,19 +366,23 @@ const handleCompleteJob = () => {
                         <Users size={17} />
                         View Applications
                       </button>
+
                       {job.status === "in_progress" && (
-  <button
-    type="button"
-    onClick={handleCompleteJob}
-    disabled={completeJobMutation.isPending}
-    className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-  >
-    <CheckCircle2 size={17} />
-    {completeJobMutation.isPending
-      ? "Completing..."
-      : "Mark as Completed"}
-  </button>
-)}
+                        <button
+                          type="button"
+                          onClick={handleCompleteJob}
+                          disabled={
+                            completeJobMutation.isPending
+                          }
+                          className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <CheckCircle2 size={17} />
+
+                          {completeJobMutation.isPending
+                            ? "Completing..."
+                            : "Mark as Completed"}
+                        </button>
+                      )}
                     </div>
                   </>
                 )}
@@ -475,24 +477,33 @@ const handleCompleteJob = () => {
             </aside>
           </div>
 
-         {/* Reviews */}
-{job.status === "completed" && (
-  <div className="mt-8">
-    {user?.role === "client" && acceptedDeveloperId && (
-      <ReviewForm
-        revieweeId={acceptedDeveloperId}
-        jobId={job._id}
-      />
-    )}
+          {/* Reviews */}
+          {job.status === "completed" && (
+            <div className="mt-8 space-y-6">
+              {user?.role === "client" &&
+                acceptedDeveloperId && (
+                  <ReviewForm
+                    revieweeId={acceptedDeveloperId}
+                    jobId={job._id}
+                  />
+                )}
 
-    {isAcceptedDeveloper && clientId && (
-      <ReviewForm
-        revieweeId={clientId}
-        jobId={job._id}
-      />
-    )}
-  </div>
-)}
+              {isAcceptedDeveloper && clientId && (
+                <ReviewForm
+                  revieweeId={clientId}
+                  jobId={job._id}
+                />
+              )}
+
+              <ReviewList
+                reviews={jobReviewsData?.reviews ?? []}
+                averageRating={
+                  jobReviewsData?.averageRating ?? 0
+                }
+                count={jobReviewsData?.count ?? 0}
+              />
+            </div>
+          )}
         </div>
       </main>
     </div>
