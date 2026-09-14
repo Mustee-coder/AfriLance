@@ -62,10 +62,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     return response.user;
   };
 
-  const register = async (data: RegisterData) => {
-    const response = await registerUser(data);
-    setUser(response.user);
-  };
+  const register = async (data: RegisterData): Promise<void> => {
+  await registerUser(data);
+};
+
+
+
 
   const logout = async () => {
     await logoutUser();
