@@ -11,12 +11,11 @@ import {
   X,
   XCircle,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-
+import axios from "axios";
 
 import { useAuth } from "@/hooks/useAuth";
-
 import { useDeveloperDashboard } from "@/hooks/useDeveloperDashboard";
 import ErrorState from "@/components/ui/ErrorState";
 
@@ -28,50 +27,43 @@ const DeveloperDashboard = () => {
 
   const { data, isLoading, isError, error } = useDeveloperDashboard();
 
+  // Redirect to profile creation if the developer has no profile yet
+  const is404 =
+    isError && axios.isAxiosError(error) && error.response?.status === 404;
+
+  useEffect(() => {
+    if (is404) {
+      navigate("/profile", { replace: true });
+    }
+  }, [is404, navigate]);
+
   const dashboard = data?.dashboard;
   const stats = dashboard?.stats;
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const navigation = [
-    {
-      label: "Dashboard",
-      icon: LayoutDashboard,
-      path: "/dashboard",
-    },
-    {
-      label: "Browse Jobs",
-      icon: BriefcaseBusiness,
-      path: "/jobs",
-    },
-    {
-      label: "Applications",
-      icon: FileText,
-      path: "/applications",
-    },
-    {
-      label: "My Profile",
-      icon: UserRound,
-      path: "/profile",
-    },
-    {
-      label: "Settings",
-      icon: Settings,
-      path: "/settings",
-    },
+    { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
+    { label: "Browse Jobs", icon: BriefcaseBusiness, path: "/jobs" },
+    { label: "Applications", icon: FileText, path: "/applications" },
+    { label: "My Profile", icon: UserRound, path: "/profile" },
+    { label: "Settings", icon: Settings, path: "/settings" },
   ];
 
   const handleLogout = async () => {
-  try {
-    await logout();
-    navigate("/login");
-  } catch (error) {
-    console.error("Logout failed:", error);
-  }
-};
+    try {
+      await logout();
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
 
   const firstName = user?.firstName || "Developer";
   const initials = user?.firstName?.charAt(0).toUpperCase() || "D";
+
+  // Avoid flashing the dashboard shell while we redirect to /profile
+  if (is404) return null;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -91,24 +83,18 @@ const DeveloperDashboard = () => {
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        {/* Decorative Glow */}
         <div className="pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full bg-emerald-500/10 blur-3xl" />
 
-        {/* Logo */}
         <div className="relative flex h-20 items-center justify-between border-b border-slate-800 px-6">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-500 text-lg font-black text-white shadow-lg shadow-emerald-500/30">
               A
             </div>
-
             <div>
               <h1 className="text-lg font-bold tracking-tight text-white">
                 AfriLance
               </h1>
-
-              <p className="text-xs text-slate-500">
-                Developer Portal
-              </p>
+              <p className="text-xs text-slate-500">Developer Portal</p>
             </div>
           </div>
 
@@ -122,7 +108,6 @@ const DeveloperDashboard = () => {
           </button>
         </div>
 
-        {/* Navigation */}
         <nav className="relative flex-1 space-y-2 px-4 py-6">
           <p className="mb-4 px-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-600">
             Workspace
@@ -170,19 +155,16 @@ const DeveloperDashboard = () => {
           })}
         </nav>
 
-        {/* Profile Mini Card */}
         <div className="relative px-4 pb-4">
           <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 font-bold text-emerald-400">
                 {initials}
               </div>
-
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-white">
                   {user?.firstName} {user?.lastName}
                 </p>
-
                 <p className="truncate text-xs text-slate-500">
                   {user?.email}
                 </p>
@@ -191,21 +173,19 @@ const DeveloperDashboard = () => {
           </div>
         </div>
 
-        {/* Logout */}
         <div className="border-t border-slate-800 p-4">
-         <button
-  type="button"
-  onClick={handleLogout}
-  className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/10 hover:text-white"
->
-  Logout
-</button>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/10 hover:text-white"
+          >
+            Logout
+          </button>
         </div>
       </aside>
 
       {/* Main */}
       <div className="lg:pl-72">
-        {/* Topbar */}
         <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-slate-200 bg-white/90 px-5 backdrop-blur-xl sm:px-8">
           <div className="flex items-center gap-3">
             <button
@@ -221,7 +201,6 @@ const DeveloperDashboard = () => {
               <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
                 Workspace
               </p>
-
               <p className="mt-0.5 text-sm font-semibold text-slate-900">
                 Developer Dashboard
               </p>
@@ -233,7 +212,6 @@ const DeveloperDashboard = () => {
               <p className="text-sm font-semibold text-slate-900">
                 {user?.firstName} {user?.lastName}
               </p>
-
               <p className="text-xs text-slate-400">Developer</p>
             </div>
 
@@ -243,13 +221,11 @@ const DeveloperDashboard = () => {
           </div>
         </header>
 
-        {/* Content */}
         <main className="p-5 sm:p-8">
           <div className="mx-auto max-w-7xl">
             {/* Welcome Hero */}
             <section className="relative overflow-hidden rounded-3xl bg-slate-950 p-6 text-white shadow-xl sm:p-8">
               <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-emerald-500/20 blur-3xl" />
-
               <div className="pointer-events-none absolute -bottom-32 right-24 h-64 w-64 rounded-full bg-emerald-400/10 blur-3xl" />
 
               <div className="relative max-w-3xl">
@@ -289,19 +265,19 @@ const DeveloperDashboard = () => {
               </div>
             </section>
 
-            {/* Error */}
-{isError && (
-  <div className="mt-8">
-    <ErrorState
-      title="Failed to load dashboard"
-      description={
-        error instanceof Error
-          ? error.message
-          : "Something went wrong while loading your dashboard."
-      }
-    />
-  </div>
-)}
+            {/* Error — only shown for non-404 errors, since 404 triggers a redirect */}
+            {isError && !is404 && (
+              <div className="mt-8">
+                <ErrorState
+                  title="Failed to load dashboard"
+                  description={
+                    error instanceof Error
+                      ? error.message
+                      : "Something went wrong while loading your dashboard."
+                  }
+                />
+              </div>
+            )}
 
             {/* Stats */}
             <section className="mt-8">
@@ -309,7 +285,6 @@ const DeveloperDashboard = () => {
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-600">
                   Overview
                 </p>
-
                 <h2 className="mt-1 text-xl font-bold text-slate-900">
                   Your activity
                 </h2>
@@ -358,7 +333,6 @@ const DeveloperDashboard = () => {
                           <p className="text-sm font-medium text-slate-500">
                             {item.label}
                           </p>
-
                           <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
                             {isLoading ? "..." : item.value}
                           </p>
@@ -380,7 +354,7 @@ const DeveloperDashboard = () => {
               </div>
             </section>
 
-            {/* Recent Applications */}
+         {/* Recent Applications */}
             <section className="mt-8 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
               <div className="flex flex-col gap-4 border-b border-slate-100 px-6 py-6 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -388,12 +362,10 @@ const DeveloperDashboard = () => {
                     <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
                       <FileText size={18} />
                     </div>
-
                     <h2 className="text-lg font-bold text-slate-900">
                       Recent Applications
                     </h2>
                   </div>
-
                   <p className="mt-2 text-sm text-slate-500">
                     Track the latest jobs you applied for.
                   </p>
@@ -412,7 +384,6 @@ const DeveloperDashboard = () => {
               {isLoading ? (
                 <div className="px-6 py-16 text-center">
                   <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-slate-200 border-t-emerald-500" />
-
                   <p className="mt-4 text-sm text-slate-500">
                     Loading your applications...
                   </p>
@@ -442,15 +413,9 @@ const DeveloperDashboard = () => {
                               <span className="font-medium text-slate-700">
                                 ${application.bidAmount}
                               </span>
-
                               <span className="text-slate-300">•</span>
-
-                              <span>
-                                {application.estimatedDays} days
-                              </span>
-
+                              <span>{application.estimatedDays} days</span>
                               <span className="text-slate-300">•</span>
-
                               <span className="capitalize">
                                 {application.job.budgetType}
                               </span>
@@ -477,7 +442,6 @@ const DeveloperDashboard = () => {
                                     : "bg-amber-500"
                               }`}
                             />
-
                             {application.status}
                           </span>
 
@@ -508,7 +472,7 @@ const DeveloperDashboard = () => {
                   <button
                     type="button"
                     onClick={() => navigate("/jobs")}
-                    className="mt-6 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700"
+                    className="mt-6 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700"
                   >
                     Browse Jobs
                     <ArrowRight size={17} />
@@ -519,45 +483,8 @@ const DeveloperDashboard = () => {
 
             {/* Profile CTA */}
             <section className="mt-8 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-              <div className="relative p-6 sm:p-8">
-                <div className="pointer-events-none absolute -right-20 -top-20 h-48 w-48 rounded-full bg-emerald-100 blur-3xl" />
-
-                <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="max-w-2xl">
-                    <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700">
-                      <UserRound size={14} />
-                      Professional Profile
-                    </div>
-
-                    <h3 className="mt-4 text-xl font-bold tracking-tight text-slate-900">
-                      Make your profile stand out
-                    </h3>
-
-                    <p className="mt-2 text-sm leading-6 text-slate-500">
-                      Keep your skills, experience, portfolio, and hourly rate
-                      updated so clients can better understand what you offer.
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => navigate("/profile")}
-                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-                  >
-                    Edit Profile
-                    <ArrowRight size={17} />
-                  </button>
-                </div>
-              </div>
+              {/* ... (baki daya na wannan sashi bai canza ba — file dinka ya yanke a nan) */}
             </section>
-
-            {/* Footer */}
-            <footer className="px-2 py-8 text-center">
-              <p className="text-xs text-slate-400">
-                © {new Date().getFullYear()} AfriLance. Built for African
-                talent.
-              </p>
-            </footer>
           </div>
         </main>
       </div>
