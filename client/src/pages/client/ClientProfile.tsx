@@ -13,9 +13,12 @@ import {
   Save,
   X,
 } from "lucide-react";
+
 import ErrorState from "@/components/ui/ErrorState";
+
 import {
   useClientProfile,
+  useCreateClientProfile,
   useUpdateClientProfile,
 } from "@/hooks/useClientProfile";
 
@@ -34,12 +37,16 @@ const ClientProfile = () => {
     refetch,
   } = useClientProfile();
 
+  const createMutation = useCreateClientProfile();
   const updateMutation = useUpdateClientProfile();
 
   const [editing, setEditing] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
   const profile = data?.profile;
+
+  const isSaving =
+    createMutation.isPending || updateMutation.isPending;
 
   const {
     register,
@@ -63,7 +70,8 @@ const ClientProfile = () => {
 
     reset({
       companyName: profile.companyName ?? "",
-      companyDescription: profile.companyDescription ?? "",
+      companyDescription:
+        profile.companyDescription ?? "",
       industry: profile.industry ?? "",
       website: profile.website ?? "",
       country: profile.country ?? "",
@@ -71,16 +79,27 @@ const ClientProfile = () => {
     });
   }, [profile, reset]);
 
-  const onSubmit = async (values: ClientProfileFormData) => {
+  const onSubmit = async (
+    values: ClientProfileFormData,
+  ) => {
     try {
       setSuccessMessage("");
 
-      await updateMutation.mutateAsync(values);
+      if (profile) {
+        await updateMutation.mutateAsync(values);
+
+        setSuccessMessage(
+          "Your company profile has been updated successfully.",
+        );
+      } else {
+        await createMutation.mutateAsync(values);
+
+        setSuccessMessage(
+          "Your company profile has been created successfully.",
+        );
+      }
 
       setEditing(false);
-      setSuccessMessage(
-        "Your company profile has been updated successfully.",
-      );
 
       setTimeout(() => {
         setSuccessMessage("");
@@ -94,11 +113,21 @@ const ClientProfile = () => {
     if (profile) {
       reset({
         companyName: profile.companyName ?? "",
-        companyDescription: profile.companyDescription ?? "",
+        companyDescription:
+          profile.companyDescription ?? "",
         industry: profile.industry ?? "",
         website: profile.website ?? "",
         country: profile.country ?? "",
         city: profile.city ?? "",
+      });
+    } else {
+      reset({
+        companyName: "",
+        companyDescription: "",
+        industry: "",
+        website: "",
+        country: "",
+        city: "",
       });
     }
 
@@ -120,54 +149,30 @@ const ClientProfile = () => {
     );
   }
 
-  if (isError) {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
-      <div className="w-full max-w-md">
-        <ErrorState
-          title="Unable to load profile"
-          description="We couldn't load your company profile right now. Please try again."
-          action={
-            <button
-              type="button"
-              onClick={() => refetch()}
-              className="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
-            >
-              Try Again
-            </button>
-          }
-        />
-      </div>
-    </div>
-  );
-}
-
-
-  if (!profile) {
+  /*
+   * A missing profile returns 404 from the API.
+   * That is expected for a new client.
+   *
+   * Only show the error state when there is an actual
+   * error and an existing profile was expected.
+   */
+  if (isError && profile) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
-        <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-          <Building2
-            size={32}
-            className="mx-auto text-slate-400"
+        <div className="w-full max-w-md">
+          <ErrorState
+            title="Unable to load profile"
+            description="We couldn't load your company profile right now. Please try again."
+            action={
+              <button
+                type="button"
+                onClick={() => refetch()}
+                className="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
+              >
+                Try Again
+              </button>
+            }
           />
-
-          <h1 className="mt-5 text-xl font-bold text-slate-900">
-            Complete your company profile
-          </h1>
-
-          <p className="mt-2 text-sm leading-6 text-slate-500">
-            Add your company information so developers can learn more
-            about you.
-          </p>
-
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            className="mt-6 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-700"
-          >
-            Create Profile
-          </button>
         </div>
       </div>
     );
@@ -183,12 +188,15 @@ const ClientProfile = () => {
   return (
     <div className="min-h-screen bg-slate-50 p-5 sm:p-8">
       <div className="mx-auto max-w-5xl">
+
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <button
               type="button"
-              onClick={() => navigate("/client/dashboard")}
+              onClick={() =>
+                navigate("/client/dashboard")
+              }
               className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition hover:text-slate-900"
             >
               <ArrowLeft size={17} />
@@ -196,15 +204,19 @@ const ClientProfile = () => {
             </button>
 
             <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-              Company Profile
+              {profile
+                ? "Company Profile"
+                : "Create Company Profile"}
             </h1>
 
             <p className="mt-1 text-sm text-slate-500">
-              Manage the information developers see about your company.
+              {profile
+                ? "Manage the information developers see about your company."
+                : "Create your company profile so developers can learn more about your business."}
             </p>
           </div>
 
-          {!editing && (
+          {!editing && profile && (
             <button
               type="button"
               onClick={() => {
@@ -227,11 +239,13 @@ const ClientProfile = () => {
           </div>
         )}
 
-        {/* Error */}
-        {updateMutation.isError && (
+        {/* Mutation Error */}
+        {(createMutation.isError ||
+          updateMutation.isError) && (
           <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            Failed to update your profile. Please check your information
-            and try again.
+            {profile
+              ? "Failed to update your profile. Please check your information and try again."
+              : "Failed to create your profile. Please check your information and try again."}
           </div>
         )}
 
@@ -244,15 +258,19 @@ const ClientProfile = () => {
 
             <div>
               <p className="text-sm font-medium text-emerald-400">
-                Client Profile
+                {profile
+                  ? "Client Profile"
+                  : "New Client Profile"}
               </p>
 
               <h2 className="mt-1 text-2xl font-bold text-white">
-                {profile.companyName || "Your Company"}
+                {profile?.companyName ||
+                  "Your Company"}
               </h2>
 
               <p className="mt-1 text-sm text-slate-400">
-                {profile.industry || "Technology Company"}
+                {profile?.industry ||
+                  "Add your company industry"}
               </p>
             </div>
           </div>
@@ -274,14 +292,15 @@ const ClientProfile = () => {
               </p>
             </div>
 
-            {editing && (
+            {(editing || !profile) && (
               <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                Editing
+                {profile ? "Editing" : "Creating"}
               </span>
             )}
           </div>
 
           <div className="mt-8 grid gap-6 md:grid-cols-2">
+
             {/* Company Name */}
             <div>
               <label className="text-sm font-semibold text-slate-700">
@@ -290,7 +309,7 @@ const ClientProfile = () => {
 
               <input
                 {...register("companyName")}
-                disabled={!editing}
+                disabled={Boolean(profile) && !editing}
                 placeholder="e.g. AfriLance Technologies"
                 className={`${inputClass(
                   Boolean(errors.companyName),
@@ -312,7 +331,7 @@ const ClientProfile = () => {
 
               <input
                 {...register("industry")}
-                disabled={!editing}
+                disabled={Boolean(profile) && !editing}
                 placeholder="e.g. Software & Technology"
                 className={`${inputClass(
                   Boolean(errors.industry),
@@ -335,7 +354,7 @@ const ClientProfile = () => {
 
               <input
                 {...register("website")}
-                disabled={!editing}
+                disabled={Boolean(profile) && !editing}
                 placeholder="https://example.com"
                 className={`${inputClass(
                   Boolean(errors.website),
@@ -358,7 +377,7 @@ const ClientProfile = () => {
 
               <input
                 {...register("country")}
-                disabled={!editing}
+                disabled={Boolean(profile) && !editing}
                 placeholder="e.g. Nigeria"
                 className={`${inputClass(
                   Boolean(errors.country),
@@ -380,7 +399,7 @@ const ClientProfile = () => {
 
               <input
                 {...register("city")}
-                disabled={!editing}
+                disabled={Boolean(profile) && !editing}
                 placeholder="e.g. Kano"
                 className={`${inputClass(
                   Boolean(errors.city),
@@ -402,7 +421,7 @@ const ClientProfile = () => {
 
               <textarea
                 {...register("companyDescription")}
-                disabled={!editing}
+                disabled={Boolean(profile) && !editing}
                 rows={6}
                 placeholder="Tell developers about your company..."
                 className={`${inputClass(
@@ -419,35 +438,42 @@ const ClientProfile = () => {
           </div>
 
           {/* Actions */}
-          {editing && (
+          {(!profile || editing) && (
             <div className="mt-8 flex flex-col-reverse gap-3 border-t border-slate-100 pt-6 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={handleCancel}
-                disabled={updateMutation.isPending}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <X size={17} />
-                Cancel
-              </button>
+
+              {profile && (
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <X size={17} />
+                  Cancel
+                </button>
+              )}
 
               <button
                 type="submit"
-                disabled={updateMutation.isPending}
+                disabled={isSaving}
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {updateMutation.isPending ? (
+                {isSaving ? (
                   <>
                     <Loader2
                       size={17}
                       className="animate-spin"
                     />
-                    Saving...
+                    {profile
+                      ? "Saving..."
+                      : "Creating..."}
                   </>
                 ) : (
                   <>
                     <Save size={17} />
-                    Save Changes
+                    {profile
+                      ? "Save Changes"
+                      : "Create Profile"}
                   </>
                 )}
               </button>
@@ -469,13 +495,14 @@ const ClientProfile = () => {
               </p>
 
               <p className="mt-1 text-xs leading-5 text-slate-500">
-                A complete company profile helps developers understand
-                who they will be working with and increases confidence
-                when applying to your jobs.
+                A complete company profile helps developers
+                understand who they will be working with and
+                increases confidence when applying to your jobs.
               </p>
             </div>
           </div>
         </div>
+
       </div>
     </div>
   );

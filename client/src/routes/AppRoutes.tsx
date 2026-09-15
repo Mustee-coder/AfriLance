@@ -29,6 +29,8 @@ import EditJob from "@/pages/client/EditJob";
 import JobApplications from "@/pages/client/JobApplications";
 import ClientProfile from "@/pages/client/ClientProfile";
 
+import ClientPublicProfile from "@/pages/client/ClientPublicProfile";
+
 const AppRoutes = () => {
 return (
 <Routes>
@@ -39,6 +41,11 @@ return (
     <Route
   path="/forgot-password"
   element={<ForgotPassword />}
+/>
+
+<Route
+  path="/clients/:userId"
+  element={<ClientPublicProfile />}
 />
 
   {/* Protected routes */}

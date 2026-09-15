@@ -69,7 +69,7 @@ const Register = () => {
         role: data.role,
       });
 
-      navigate("/dashboard");
+      navigate("/login");
     } catch (error) {
       setServerError(
         error instanceof Error

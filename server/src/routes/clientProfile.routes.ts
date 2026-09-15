@@ -43,7 +43,6 @@ router.delete(
 
 router.get(
   "/user/:userId",
-  authenticate,
   getClientProfileByUserId,
 );
 

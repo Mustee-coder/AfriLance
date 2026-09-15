@@ -281,13 +281,15 @@ const handleUploadImages = async (index: number) => {
             </div>
 
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-                My Profile
-              </h1>
+              <h1>
+  {data?.profile ? "My Profile" : "Create Developer Profile"}
+</h1>
 
-              <p className="mt-1 text-sm text-slate-500">
-                Build a strong profile to attract better clients.
-              </p>
+<p>
+  {data?.profile
+    ? "Build a strong profile to attract better clients."
+    : "Create your developer profile and start showcasing your skills."}
+</p>
             </div>
           </div>
 
