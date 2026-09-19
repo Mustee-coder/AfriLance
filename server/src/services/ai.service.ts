@@ -225,7 +225,9 @@ Return this exact JSON structure:
 }
 `;
 
-  let response;
+  let response: Awaited<
+  ReturnType<typeof ai.models.generateContent>
+> | undefined;
 
 for (let attempt = 1; attempt <= 3; attempt++) {
   try {
@@ -235,8 +237,13 @@ for (let attempt = 1; attempt <= 3; attempt++) {
     });
 
     break;
-  } catch (error: any) {
-    const status = error?.status;
+  } catch (error: unknown) {
+    const status =
+      typeof error === "object" &&
+      error !== null &&
+      "status" in error
+        ? (error as { status?: number }).status
+        : undefined;
 
     if (status !== 503 || attempt === 3) {
       throw error;
@@ -251,6 +258,14 @@ for (let attempt = 1; attempt <= 3; attempt++) {
     await new Promise((resolve) => setTimeout(resolve, delay));
   }
 }
+
+if (!response) {
+  throw new Error("AI request failed after retries");
+}
+
+
+
+    
 
 
   const text = response.text?.trim();
