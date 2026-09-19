@@ -79,3 +79,74 @@ export type ExtractJobRequirementsInput = z.infer<
 export type AIRequirements = z.infer<
   typeof aiRequirementsSchema
 >;
+
+
+
+export const improveCVSchema = z.object({
+  headline: z
+    .string()
+    .trim()
+    .max(150)
+    .optional(),
+
+  professionalSummary: z
+    .string()
+    .trim()
+    .max(2000)
+    .optional(),
+
+  skills: z
+    .array(z.string().trim().min(1))
+    .max(30),
+
+  experience: z
+    .array(
+      z.object({
+        company: z.string().trim().min(1).max(100),
+        position: z.string().trim().min(1).max(100),
+        startDate: z.coerce.date(),
+        endDate: z.coerce.date().optional(),
+        current: z.boolean(),
+        description: z.string().trim().max(2000).optional(),
+      }),
+    )
+    .max(20),
+
+  projects: z
+    .array(
+      z.object({
+        title: z.string().trim().min(1).max(150),
+        description: z.string().trim().max(2000),
+        projectUrl: z.string().trim().max(500).optional(),
+      }),
+    )
+    .max(20),
+
+  education: z
+    .array(
+      z.object({
+        institution: z.string().trim().min(1).max(150),
+        degree: z.string().trim().min(1).max(150),
+        fieldOfStudy: z.string().trim().max(150).optional(),
+        startDate: z.coerce.date().optional(),
+        endDate: z.coerce.date().optional(),
+        description: z.string().trim().max(2000).optional(),
+      }),
+    )
+    .max(10),
+
+  certifications: z
+    .array(
+      z.object({
+        name: z.string().trim().min(1).max(150),
+        issuer: z.string().trim().min(1).max(150),
+        issueDate: z.coerce.date().optional(),
+        credentialUrl: z.string().trim().max(500).optional(),
+      }),
+    )
+    .max(20),
+});
+
+export type AICVImprovement = z.infer<
+  typeof improveCVSchema
+>;

@@ -1,12 +1,15 @@
 import { Request, Response } from "express";
+
 import {
   extractJobRequirementsSchema,
   generateJobSchema,
+  improveCVSchema,
 } from "../validators/ai.validator.js";
 
 import {
   extractJobRequirements,
   generateJobDraft,
+  improveCV,
 } from "../services/ai.service.js";
 
 export const generateJob = async (
@@ -42,7 +45,6 @@ export const generateJob = async (
   }
 };
 
-
 export const extractRequirements = async (
   req: Request,
   res: Response,
@@ -77,3 +79,37 @@ export const extractRequirements = async (
     });
   }
 };
+
+export const improveResume = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const validation = improveCVSchema.safeParse(req.body);
+
+    if (!validation.success) {
+      res.status(400).json({
+        success: false,
+        message: "Invalid resume data",
+        errors: validation.error.flatten(),
+      });
+      return;
+    }
+
+    const improvedResume = await improveCV(validation.data);
+
+    res.status(200).json({
+      success: true,
+      message: "CV improved successfully",
+      resume: improvedResume,
+    });
+  } catch (error) {
+    console.error("AI CV improvement error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to improve CV",
+    });
+  }
+};
+

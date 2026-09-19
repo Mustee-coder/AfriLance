@@ -31,6 +31,9 @@ import ClientProfile from "@/pages/client/ClientProfile";
 
 import ClientPublicProfile from "@/pages/client/ClientPublicProfile";
 
+
+import ResumeBuilder from "@/pages/developer/ResumeBuilder";
+
 const AppRoutes = () => {
 return (
 <Routes>
@@ -88,6 +91,11 @@ return (
       element={<MyProfile />}
     />
 
+     <Route
+     path="/resume"
+     element={<ResumeBuilder />}
+    />
+    
     {/* Public developer profile */}
     <Route
       path="/developers/:userId"

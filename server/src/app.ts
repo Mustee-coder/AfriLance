@@ -19,7 +19,11 @@ import dashboardRoutes from "./routes/dashboard.routes.js";
 import reviewRoutes from "./routes/review.routes.js";
 
 
+
 import aiRoutes from "./routes/ai.routes.js";
+import resumeRoutes from "./routes/resume.routes.js";
+
+
 
 const app = express();
 
@@ -50,6 +54,9 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/reviews", reviewRoutes);
 
 app.use("/api/ai", aiRoutes);
+app.use("/api/resumes", resumeRoutes);
+
+
 app.use(
   (
     error: Error,

@@ -3,8 +3,10 @@ import { GoogleGenAI } from "@google/genai";
 import {
   AIJobDraft,
   AIRequirements,
+  AICVImprovement,
   aiJobDraftSchema,
   aiRequirementsSchema,
+  improveCVSchema,
 } from "../validators/ai.validator.js";
 
 const apiKey = process.env.GEMINI_API_KEY;
@@ -150,3 +152,135 @@ Rules:
 
   return result.data;
 };
+
+
+
+export const improveCV = async (
+  resume: AICVImprovement,
+): Promise<AICVImprovement> => {
+  const prompt = `
+You are an AI CV improvement assistant for AfriLance.
+
+Improve the following professional resume.
+
+IMPORTANT RULES:
+- Do NOT invent experience.
+- Do NOT invent companies.
+- Do NOT invent education.
+- Do NOT invent certifications.
+- Do NOT invent skills.
+- Do NOT invent achievements, metrics, responsibilities, or technologies.
+- Do NOT change dates.
+- Do NOT remove real information.
+- Preserve the original meaning.
+- Improve grammar, clarity, professionalism, and impact.
+- Make descriptions concise and ATS-friendly.
+- Use strong professional language only when supported by the original content.
+- Keep the same number of experience, project, education, and certification items.
+- Return ONLY valid JSON.
+
+Resume:
+${JSON.stringify(resume, null, 2)}
+
+Return this exact JSON structure:
+{
+  "headline": "string",
+  "professionalSummary": "string",
+  "skills": ["string"],
+  "experience": [
+    {
+      "company": "string",
+      "position": "string",
+      "startDate": "date",
+      "endDate": "date",
+      "current": true,
+      "description": "string"
+    }
+  ],
+  "projects": [
+    {
+      "title": "string",
+      "description": "string",
+      "projectUrl": "string"
+    }
+  ],
+  "education": [
+    {
+      "institution": "string",
+      "degree": "string",
+      "fieldOfStudy": "string",
+      "startDate": "date",
+      "endDate": "date",
+      "description": "string"
+    }
+  ],
+  "certifications": [
+    {
+      "name": "string",
+      "issuer": "string",
+      "issueDate": "date",
+      "credentialUrl": "string"
+    }
+  ]
+}
+`;
+
+  let response;
+
+for (let attempt = 1; attempt <= 3; attempt++) {
+  try {
+    response = await ai.models.generateContent({
+      model: "gemini-3.6-flash",
+      contents: prompt,
+    });
+
+    break;
+  } catch (error: any) {
+    const status = error?.status;
+
+    if (status !== 503 || attempt === 3) {
+      throw error;
+    }
+
+    const delay = attempt * 2000;
+
+    console.log(
+      `Gemini temporarily unavailable. Retrying in ${delay}ms...`,
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, delay));
+  }
+}
+
+
+  const text = response.text?.trim();
+
+  if (!text) {
+    throw new Error("AI returned an empty response");
+  }
+
+  const cleanedText = text
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
+
+  let parsed: unknown;
+
+  try {
+    parsed = JSON.parse(cleanedText);
+  } catch {
+    throw new Error("AI returned invalid JSON");
+  }
+
+  const result = improveCVSchema.safeParse(parsed);
+
+  if (!result.success) {
+    throw new Error("AI returned invalid CV data");
+  }
+
+  return result.data;
+};
+
+
+

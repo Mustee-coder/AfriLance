@@ -25,7 +25,6 @@ export const generateJobDraft = async (
   return response.data;
 };
 
-
 export interface AIRequirements {
   skills: string[];
   requirements: string[];
@@ -43,6 +42,64 @@ export const extractJobRequirements = async (
   const response = await api.post("/ai/extract-requirements", {
     idea,
   });
+
+  return response.data;
+};
+
+export interface AIResumeExperience {
+  company: string;
+  position: string;
+  startDate: string;
+  endDate?: string;
+  current: boolean;
+  description?: string;
+}
+
+export interface AIResumeProject {
+  title: string;
+  description: string;
+  projectUrl?: string;
+}
+
+export interface AIResumeEducation {
+  institution: string;
+  degree: string;
+  fieldOfStudy?: string;
+  startDate?: string;
+  endDate?: string;
+  description?: string;
+}
+
+export interface AIResumeCertification {
+  name: string;
+  issuer: string;
+  issueDate?: string;
+  credentialUrl?: string;
+}
+
+export interface ImproveCVData {
+  headline?: string;
+  professionalSummary?: string;
+  skills: string[];
+  experience: AIResumeExperience[];
+  projects: AIResumeProject[];
+  education: AIResumeEducation[];
+  certifications: AIResumeCertification[];
+}
+
+export interface ImproveCVResponse {
+  success: boolean;
+  message: string;
+  resume: ImproveCVData;
+}
+
+export const improveCV = async (
+  resume: ImproveCVData,
+): Promise<ImproveCVResponse> => {
+  const response = await api.post(
+    "/ai/improve-cv",
+    resume,
+  );
 
   return response.data;
 };

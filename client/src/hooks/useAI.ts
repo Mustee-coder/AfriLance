@@ -1,8 +1,9 @@
-
 import { useMutation } from "@tanstack/react-query";
+
 import {
   extractJobRequirements,
   generateJobDraft,
+  improveCV,
 } from "@/api/ai.api";
 
 export const useGenerateJobDraft = () => {
@@ -14,5 +15,11 @@ export const useGenerateJobDraft = () => {
 export const useExtractJobRequirements = () => {
   return useMutation({
     mutationFn: extractJobRequirements,
+  });
+};
+
+export const useImproveCV = () => {
+  return useMutation({
+    mutationFn: improveCV,
   });
 };
