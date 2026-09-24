@@ -13,12 +13,9 @@ import {
   Trash2,
   X,
   Loader2,
+  Users,
 } from "lucide-react";
-
-import {
-  useMyJobs,
-  useDeleteJob,
-} from "@/hooks/useJobs";
+import { useMyJobs, useDeleteJob } from "@/hooks/useJobs";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 
@@ -78,17 +75,15 @@ const MyJobs = () => {
 
     try {
       await deleteJobMutation.mutateAsync(deleteJobId);
-
       setDeleteJobId(null);
     } catch {
-      // Error state handled below
+      // Delete error is displayed inside the modal.
     }
   };
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl">
-
         {/* Back */}
         <button
           type="button"
@@ -142,44 +137,45 @@ const MyJobs = () => {
         )}
 
         {/* Error */}
-        {/* Error */}
-{isError && !isLoading && (
-  <div className="mt-8">
-    <ErrorState
-      title="Unable to load your jobs"
-      description="Something went wrong while fetching your jobs."
-      action={
-        <button
-          type="button"
-          onClick={() => refetch()}
-          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-        >
-          <RefreshCw size={16} />
-          Try Again
-        </button>
-      }
-    />
-  </div>
-)}
+        {isError && !isLoading && (
+          <div className="mt-8">
+            <ErrorState
+              title="Unable to load your jobs"
+              description="Something went wrong while fetching your jobs."
+              action={
+                <button
+                  type="button"
+                  onClick={() => refetch()}
+                  className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                >
+                  <RefreshCw size={16} />
+                  Try Again
+                </button>
+              }
+            />
+          </div>
+        )}
+
         {/* Empty */}
-  {!isLoading && !isError && jobs.length === 0 && (
-  <div className="mt-8">
-    <EmptyState
-      title="No jobs yet"
-      description="You haven't posted any jobs yet. Create your first job and start finding talented developers."
-      action={
-        <button
-          type="button"
-          onClick={() => navigate("/client/jobs/new")}
-          className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-700"
-        >
-          <Plus size={18} />
-          Post Your First Job
-        </button>
-      }
-    />
-  </div>
-)}
+        {!isLoading && !isError && jobs.length === 0 && (
+          <div className="mt-8">
+            <EmptyState
+              title="No jobs yet"
+              description="You haven't posted any jobs yet. Create your first job and start finding talented developers."
+              action={
+                <button
+                  type="button"
+                  onClick={() => navigate("/client/jobs/new")}
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-700"
+                >
+                  <Plus size={18} />
+                  Post Your First Job
+                </button>
+              }
+            />
+          </div>
+        )}
+
         {/* Jobs */}
         {!isLoading && !isError && jobs.length > 0 && (
           <>
@@ -295,30 +291,60 @@ const MyJobs = () => {
                   )}
 
                   {/* Actions */}
-                  <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        navigate(`/jobs/${job._id}`)
-                      }
-                      className="inline-flex items-center gap-1 text-sm font-bold text-emerald-600 transition hover:text-emerald-700"
-                    >
-                      View Job
-                      <ChevronRight
-                        size={16}
-                        className="transition group-hover:translate-x-0.5"
-                      />
-                    </button>
+                  <div className="mt-6 flex items-center justify-between gap-2 border-t border-slate-100 pt-5">
+                    <div className="flex min-w-0 items-center gap-2">
+                      {/* View Job */}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          navigate(`/jobs/${job._id}`)
+                        }
+                        title="View Job"
+                        aria-label="View Job"
+                        className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-emerald-600 transition hover:text-emerald-700"
+                      >
+                        <span>View Job</span>
+                        <ChevronRight
+                          size={16}
+                          className="transition group-hover:translate-x-0.5"
+                        />
+                      </button>
 
+                      {/* View Matches */}
+                      {job.status === "open" && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            navigate(
+                              `/client/jobs/${job._id}/matches`,
+                            )
+                          }
+                          title="View Matches"
+                          aria-label="View Matches"
+                          className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-slate-900 px-3 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800 sm:px-4"
+                        >
+                          <Users size={16} />
+                          <span className="hidden sm:inline">
+                            View Matches
+                          </span>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Delete */}
                     <button
                       type="button"
                       onClick={() =>
                         setDeleteJobId(job._id)
                       }
-                      className="inline-flex items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:border-red-200 hover:bg-red-100"
+                      title="Delete Job"
+                      aria-label="Delete Job"
+                      className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-3 py-2.5 text-sm font-semibold text-red-600 transition hover:border-red-200 hover:bg-red-100 sm:px-4"
                     >
                       <Trash2 size={16} />
-                      Delete
+                      <span className="hidden sm:inline">
+                        Delete
+                      </span>
                     </button>
                   </div>
                 </motion.article>
@@ -415,3 +441,4 @@ const MyJobs = () => {
 };
 
 export default MyJobs;
+

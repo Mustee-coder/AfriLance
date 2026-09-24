@@ -12,6 +12,7 @@ import {
   getMyJobs,
   updateJob,
   completeJob,
+  getJobMatches,
 } from "@/api/jobs.api";
 
 export const useJobs = () => {
@@ -32,6 +33,14 @@ export const useJob = (jobId: string) => {
   return useQuery({
     queryKey: ["job", jobId],
     queryFn: () => getJobById(jobId),
+    enabled: Boolean(jobId),
+  });
+};
+
+export const useJobMatches = (jobId: string) => {
+  return useQuery({
+    queryKey: ["job-matches", jobId],
+    queryFn: () => getJobMatches(jobId),
     enabled: Boolean(jobId),
   });
 };
@@ -78,6 +87,10 @@ export const useUpdateJob = () => {
       queryClient.invalidateQueries({
         queryKey: ["job", variables.jobId],
       });
+
+      queryClient.invalidateQueries({
+        queryKey: ["job-matches", variables.jobId],
+      });
     },
   });
 };
@@ -99,6 +112,10 @@ export const useDeleteJob = () => {
 
       queryClient.removeQueries({
         queryKey: ["job", jobId],
+      });
+
+      queryClient.removeQueries({
+        queryKey: ["job-matches", jobId],
       });
     },
   });
@@ -122,6 +139,11 @@ export const useCompleteJob = () => {
       queryClient.invalidateQueries({
         queryKey: ["my-jobs"],
       });
+
+      queryClient.invalidateQueries({
+        queryKey: ["job-matches", jobId],
+      });
     },
   });
 };
+

@@ -2,6 +2,7 @@ import { Router } from "express";
 
 import {
   createJob,
+  getJobMatchesForClient,
   getJobs,
   getMyJobs,
   getJobById,
@@ -36,6 +37,14 @@ router.patch(
   authenticate,
   authorize("client"),
   completeJob,
+);
+
+// Only the owning client can view deterministic developer matches
+router.get(
+  "/:jobId/matches",
+  authenticate,
+  authorize("client"),
+  getJobMatchesForClient,
 );
 
 // Anyone authenticated can view a single job

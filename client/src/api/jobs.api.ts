@@ -185,3 +185,62 @@ export const completeJob = async (
   return response.data;
 };
 
+
+
+export interface JobMatch {
+  developerProfileId: string;
+
+  developer: {
+    firstName: string;
+    lastName: string;
+  };
+
+  availability: "available" | "busy";
+
+  skills: {
+    matched: string[];
+    missing: string[];
+    matchedCount: number;
+    requiredCount: number;
+  };
+
+  experience: {
+    years: number;
+    requirement: "entry" | "intermediate" | "expert";
+    meetsRequirement: boolean;
+  };
+
+  portfolioEvidence: {
+    projectId: string;
+    title: string;
+    matchedSkills: string[];
+  }[];
+
+  reasons: string[];
+}
+
+export interface JobMatchesResponse {
+  success: boolean;
+  matchingMethod: "rule-based-v1";
+  jobId: string;
+  matches: JobMatch[];
+
+  meta: {
+    returned: number;
+    excluded: {
+      unavailable: number;
+      noSkillMatch: number;
+    };
+  };
+}
+
+
+export const getJobMatches = async (
+  jobId: string,
+): Promise<JobMatchesResponse> => {
+  const response = await api.get(
+    `/jobs/${jobId}/matches`,
+  );
+
+  return response.data;
+};

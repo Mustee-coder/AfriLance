@@ -28,6 +28,7 @@ import MyJobs from "@/pages/client/MyJobs";
 import EditJob from "@/pages/client/EditJob";
 import JobApplications from "@/pages/client/JobApplications";
 import ClientProfile from "@/pages/client/ClientProfile";
+import JobMatches from "@/pages/client/JobMatches";
 
 import ClientPublicProfile from "@/pages/client/ClientPublicProfile";
 
@@ -145,6 +146,10 @@ return (
       path="/client/jobs/:id/applications"
       element={<JobApplications />}
     />
+    <Route
+  path="/client/jobs/:id/matches"
+  element={<JobMatches />}
+/>
   </Route>
 
   {/* Fallback */}

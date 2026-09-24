@@ -5,6 +5,74 @@ import {
   createJobSchema,
   updateJobSchema,
 } from "../validators/job.validator.js";
+import mongoose from "mongoose";
+import {
+  getJobMatches,
+  MatchingError,
+} from "../services/matching.service.js";
+
+export const getJobMatchesForClient = async (
+  req: AuthenticatedRequest,
+  res: Response,
+): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+      return;
+    }
+
+    const jobId = Array.isArray(req.params.jobId)
+      ? req.params.jobId[0]
+      : req.params.jobId;
+
+    if (!jobId || !mongoose.Types.ObjectId.isValid(jobId)) {
+      res.status(400).json({
+        success: false,
+        message: "Invalid job ID",
+      });
+      return;
+    }
+
+    const result = await getJobMatches(jobId, req.user.userId);
+
+    res.status(200).json({
+      success: true,
+      matchingMethod: "rule-based-v1",
+      ...result,
+    });
+  } catch (error) {
+    if (error instanceof MatchingError) {
+      const responses = {
+        JOB_NOT_FOUND: { status: 404, message: "Job not found" },
+        JOB_NOT_OPEN: {
+          status: 400,
+          message: "Matches are available only for open jobs",
+        },
+        JOB_ACCESS_DENIED: {
+          status: 403,
+          message: "You do not have permission to view these matches",
+        },
+      } as const;
+      const response = responses[error.code];
+
+      res.status(response.status).json({
+        success: false,
+        message: response.message,
+      });
+      return;
+    }
+
+    console.error("Get job matches error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
 
 export const createJob = async (
   req: AuthenticatedRequest,

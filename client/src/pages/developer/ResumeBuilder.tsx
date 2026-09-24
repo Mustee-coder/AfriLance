@@ -35,6 +35,7 @@ const ResumeBuilder = () => {
 
   const [skills, setSkills] = useState<string[]>([]);
   const [skillInput, setSkillInput] = useState("");
+  const [aiMessage, setAiMessage] = useState("");
 
 
 const [template, setTemplate] = useState<
@@ -333,6 +334,24 @@ setTemplate(resume.template ?? "classic");
     }
   };
   const handleImproveCV = async () => {
+  setAiMessage("");
+
+  const hasContent =
+    headline.trim() ||
+    professionalSummary.trim() ||
+    skills.length > 0 ||
+    experience.length > 0 ||
+    projects.length > 0 ||
+    education.length > 0 ||
+    certifications.length > 0;
+
+  if (!hasContent) {
+    setAiMessage(
+      "Please add some resume content before using AI Improve.",
+    );
+    return;
+  }
+
   try {
     const response = await improveCVMutation.mutateAsync({
       headline: headline.trim(),
@@ -355,11 +374,14 @@ setTemplate(resume.template ?? "classic");
     setProjects(improved.projects ?? []);
     setEducation(improved.education ?? []);
     setCertifications(improved.certifications ?? []);
+
+    setAiMessage("Your CV has been improved successfully.");
   } catch {
-    // Mutation state handles the error.
+    setAiMessage(
+      "Unable to improve your CV right now. Please try again.",
+    );
   }
 };
-
   const isSaving =
     createResume.isPending ||
     updateResume.isPending;
@@ -381,58 +403,72 @@ setTemplate(resume.template ?? "classic");
   return (
     <div className="min-h-screen bg-slate-100">
       {/* Header */}
-      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => window.history.back()}
-              className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-emerald-600"
-              aria-label="Go back"
-            >
-              ←
-            </button>
+<header className="relative sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
+  <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6">
+    <div className="flex items-center gap-3">
+      <button
+        type="button"
+        onClick={() => window.history.back()}
+        className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-emerald-600"
+        aria-label="Go back"
+      >
+        ←
+      </button>
 
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-lg font-bold text-slate-900">
-                  Resume Builder
-                </h1>
+      <div>
+        <div className="flex items-center gap-2">
+          <h1 className="text-lg font-bold text-slate-900">
+            Resume Builder
+          </h1>
 
-                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700">
-                  AfriLance
-                </span>
-              </div>
-
-              <p className="hidden text-xs text-slate-500 sm:block">
-                Build your professional resume
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-  <button
-    type="button"
-    onClick={handleImproveCV}
-    disabled={improveCVMutation.isPending}
-    className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
-  >
-    {improveCVMutation.isPending
-      ? "Improving..."
-      : "✨ Improve with AI"}
-  </button>
-
-  <button
-    type="button"
-    onClick={handleSave}
-    disabled={isSaving}
-    className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
-  >
-    {isSaving ? "Saving..." : "Save Resume"}
-  </button>
-</div>
+          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700">
+            AfriLance
+          </span>
         </div>
-      </header>
+
+        <p className="hidden text-xs text-slate-500 sm:block">
+          Build your professional resume
+        </p>
+      </div>
+    </div>
+
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={handleImproveCV}
+        disabled={improveCVMutation.isPending}
+        className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {improveCVMutation.isPending
+          ? "Improving..."
+          : "✨ Improve with AI"}
+      </button>
+
+      <button
+        type="button"
+        onClick={handleSave}
+        disabled={isSaving}
+        className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {isSaving ? "Saving..." : "Save Resume"}
+      </button>
+    </div>
+  </div>
+
+  {aiMessage && (
+    <div className="mx-auto max-w-7xl px-4 pb-3 sm:px-6">
+      <div
+        className={`rounded-xl border px-4 py-3 text-sm ${
+          aiMessage.includes("successfully")
+            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+            : "border-amber-200 bg-amber-50 text-amber-700"
+        }`}
+      >
+        {aiMessage}
+      </div>
+    </div>
+  )}
+</header>
 
       {/* Main */}
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:py-8">

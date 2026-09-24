@@ -161,26 +161,58 @@ export const improveCV = async (
   const prompt = `
 You are an AI CV improvement assistant for AfriLance.
 
-Improve the following professional resume.
+Your job is to improve the wording and presentation of the candidate's existing CV
+without changing, exaggerating, or inventing any facts.
 
-IMPORTANT RULES:
+IMPORTANT TRUTHFULNESS RULES:
+- Use ONLY information provided in the input resume.
 - Do NOT invent experience.
-- Do NOT invent companies.
+- Do NOT invent companies or employers.
 - Do NOT invent education.
 - Do NOT invent certifications.
 - Do NOT invent skills.
-- Do NOT invent achievements, metrics, responsibilities, or technologies.
+- Do NOT invent achievements.
+- Do NOT invent metrics, numbers, responsibilities, technologies, tools, or results.
 - Do NOT change dates.
 - Do NOT remove real information.
-- Preserve the original meaning.
-- Improve grammar, clarity, professionalism, and impact.
-- Make descriptions concise and ATS-friendly.
-- Use strong professional language only when supported by the original content.
+- Do NOT change the meaning of the original information.
+- Do NOT upgrade the candidate's level or seniority.
+- Do NOT describe the candidate as an expert unless the input explicitly supports it.
+- Do NOT add unsupported claims such as "results-driven", "high-performing",
+  "successful", "highly skilled", "expert", "robust", "secure", "scalable",
+  "optimized", "proven", or similar claims unless the original resume provides
+  evidence supporting that claim.
+- Do NOT turn ordinary experience into exceptional achievements.
+- If the original content is simple, improve its grammar and clarity without
+  making it sound exaggerated.
+
+IMPROVEMENT RULES:
+- Improve grammar.
+- Improve clarity.
+- Improve professional wording.
+- Improve sentence structure.
+- Make the summary concise and professional.
+- Make descriptions ATS-friendly.
+- Use action-oriented language only when it accurately reflects the original content.
+- Preserve all factual information.
+- Preserve all skills exactly.
 - Keep the same number of experience, project, education, and certification items.
-- Return ONLY valid JSON.
+- Do not merge separate skills into one skill.
+- Do not split one skill into multiple skills unless the input already contains
+  those separate skills.
+- If a section is empty, keep it empty.
+- Do not create content for empty sections.
+
+SKILLS RULE:
+The skills array is factual user-provided information.
+Return every skill from the input.
+Do not remove, rename, merge, or replace skills.
+Return each skill as a separate array item.
 
 Resume:
 ${JSON.stringify(resume, null, 2)}
+
+Return ONLY valid JSON.
 
 Return this exact JSON structure:
 {
@@ -226,47 +258,42 @@ Return this exact JSON structure:
 `;
 
   let response: Awaited<
-  ReturnType<typeof ai.models.generateContent>
-> | undefined;
+    ReturnType<typeof ai.models.generateContent>
+  > | undefined;
 
-for (let attempt = 1; attempt <= 3; attempt++) {
-  try {
-    response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
-      contents: prompt,
-    });
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      response = await ai.models.generateContent({
+        model: "gemini-3.6-flash",
+        contents: prompt,
+      });
 
-    break;
-  } catch (error: unknown) {
-    const status =
-      typeof error === "object" &&
-      error !== null &&
-      "status" in error
-        ? (error as { status?: number }).status
-        : undefined;
+      break;
+    } catch (error: unknown) {
+      const status =
+        typeof error === "object" &&
+        error !== null &&
+        "status" in error
+          ? (error as { status?: number }).status
+          : undefined;
 
-    if (status !== 503 || attempt === 3) {
-      throw error;
+      if (status !== 503 || attempt === 3) {
+        throw error;
+      }
+
+      const delay = attempt * 2000;
+
+      console.log(
+        `Gemini temporarily unavailable. Retrying in ${delay}ms...`,
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
-
-    const delay = attempt * 2000;
-
-    console.log(
-      `Gemini temporarily unavailable. Retrying in ${delay}ms...`,
-    );
-
-    await new Promise((resolve) => setTimeout(resolve, delay));
   }
-}
 
-if (!response) {
-  throw new Error("AI request failed after retries");
-}
-
-
-
-    
-
+  if (!response) {
+    throw new Error("AI request failed after retries");
+  }
 
   const text = response.text?.trim();
 
@@ -296,6 +323,5 @@ if (!response) {
 
   return result.data;
 };
-
 
 
