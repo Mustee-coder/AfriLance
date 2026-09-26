@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Menu,
   Settings,
+  Sparkles,
   UserRound,
   X,
   XCircle,
@@ -43,12 +44,17 @@ const DeveloperDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const navigation = [
-    { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-    { label: "Browse Jobs", icon: BriefcaseBusiness, path: "/jobs" },
-    { label: "Applications", icon: FileText, path: "/applications" },
-    { label: "My Profile", icon: UserRound, path: "/profile" },
-    { label: "Settings", icon: Settings, path: "/settings" },
-  ];
+  { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
+  { label: "Browse Jobs", icon: BriefcaseBusiness, path: "/jobs" },
+  {
+    label: "Recommended Jobs",
+    icon: Sparkles,
+    path: "/developer/jobs/recommendations",
+  },
+  { label: "Applications", icon: FileText, path: "/applications" },
+  { label: "My Profile", icon: UserRound, path: "/profile" },
+  { label: "Settings", icon: Settings, path: "/settings" },
+];
 
   const handleLogout = async () => {
     try {
@@ -223,47 +229,56 @@ const DeveloperDashboard = () => {
 
         <main className="p-5 sm:p-8">
           <div className="mx-auto max-w-7xl">
-            {/* Welcome Hero */}
-            <section className="relative overflow-hidden rounded-3xl bg-slate-950 p-6 text-white shadow-xl sm:p-8">
-              <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-emerald-500/20 blur-3xl" />
-              <div className="pointer-events-none absolute -bottom-32 right-24 h-64 w-64 rounded-full bg-emerald-400/10 blur-3xl" />
 
-              <div className="relative max-w-3xl">
-                <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-300">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  Developer Workspace
-                </div>
 
-                <h1 className="mt-5 text-2xl font-bold tracking-tight sm:text-4xl">
-                  Welcome back, {firstName} 👋
-                </h1>
+           {/* Welcome Hero */}
 
-                <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-400 sm:text-base">
-                  Manage your applications, discover new opportunities, and
-                  build your professional presence on AfriLance.
-                </p>
+<section className="relative overflow-hidden rounded-3xl bg-slate-950 p-6 text-white shadow-xl sm:p-8">
+  <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-emerald-500/20 blur-3xl" />
+  <div className="pointer-events-none absolute -bottom-32 right-24 h-64 w-64 rounded-full bg-emerald-400/10 blur-3xl" />  <div className="relative max-w-3xl">
+    <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-300">
+      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+      Developer Workspace
+    </div><h1 className="mt-5 text-2xl font-bold tracking-tight sm:text-4xl">
+  Welcome back, {firstName} 👋
+</h1>
 
-                <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                  <button
-                    type="button"
-                    onClick={() => navigate("/jobs")}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-400"
-                  >
-                    Browse Jobs
-                    <ArrowRight size={17} />
-                  </button>
+<p className="mt-3 max-w-2xl text-sm leading-7 text-slate-400 sm:text-base">
+  Manage your applications, discover new opportunities, and build your
+  professional presence on AfriLance.
+</p>
 
-                  <button
-                    type="button"
-                    onClick={() => navigate("/profile")}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-white/5 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:bg-white/10"
-                  >
-                    View Profile
-                    <UserRound size={17} />
-                  </button>
-                </div>
-              </div>
-            </section>
+<div className="mt-6 flex flex-col gap-3 sm:flex-row">
+  <button
+    type="button"
+    onClick={() => navigate("/jobs")}
+    className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-400"
+  >
+    Browse Jobs
+    <ArrowRight size={17} />
+  </button>
+
+  <button
+    type="button"
+    onClick={() => navigate("/profile")}
+    className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-white/5 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:bg-white/10"
+  >
+    View Profile
+    <UserRound size={17} />
+  </button>
+
+  <button
+    type="button"
+    onClick={() => navigate("/developer/jobs/recommendations")}
+    className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-5 py-3 text-sm font-semibold text-emerald-300 transition hover:bg-emerald-400/20"
+  >
+    Recommended Jobs
+    <Sparkles size={17} />
+  </button>
+</div>
+
+  </div>
+</section>
 
             {/* Error — only shown for non-404 errors, since 404 triggers a redirect */}
             {isError && !is404 && (

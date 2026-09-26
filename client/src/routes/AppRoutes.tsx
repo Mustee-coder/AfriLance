@@ -16,6 +16,7 @@ import Applications from "@/pages/developer/Applications";
 import MyProfile from "@/pages/developer/MyProfile";
 import Settings from "@/pages/developer/Settings";
 import DeveloperPublicProfile from "@/pages/developer/DeveloperPublicProfile";
+import JobRecommendations from "@/pages/developer/JobRecommendations";
 
 // Jobs
 import JobDetails from "@/pages/jobs/JobDetails";
@@ -79,7 +80,10 @@ return (
       path="/jobs/:id/apply"
       element={<ApplyJob />}
     />
-
+<Route
+  path="/developer/jobs/recommendations"
+  element={<JobRecommendations />}
+/>
     {/* Developer applications */}
     <Route
       path="/applications"

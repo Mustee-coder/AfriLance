@@ -13,6 +13,7 @@ import {
   updateJob,
   completeJob,
   getJobMatches,
+  getJobRecommendations,
 } from "@/api/jobs.api";
 
 export const useJobs = () => {
@@ -147,3 +148,11 @@ export const useCompleteJob = () => {
   });
 };
 
+
+
+export const useJobRecommendations = () => {
+  return useQuery({
+    queryKey: ["job-recommendations"],
+    queryFn: getJobRecommendations,
+  });
+};

@@ -8,7 +8,9 @@ import {
 import mongoose from "mongoose";
 import {
   getJobMatches,
+  getJobRecommendations,
   MatchingError,
+  RecommendationError,
 } from "../services/matching.service.js";
 
 export const getJobMatchesForClient = async (
@@ -73,6 +75,49 @@ export const getJobMatchesForClient = async (
     });
   }
 };
+
+
+export const getJobRecommendationsForDeveloper = async (
+  req: AuthenticatedRequest,
+  res: Response,
+): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+      return;
+    }
+
+    const result = await getJobRecommendations(req.user.userId);
+
+    res.status(200).json({
+      success: true,
+      matchingMethod: "rule-based-v1",
+      ...result,
+    });
+  } catch (error) {
+    if (error instanceof RecommendationError) {
+      if (error.code === "DEVELOPER_PROFILE_NOT_FOUND") {
+        res.status(404).json({
+          success: false,
+          message: "Developer profile not found",
+        });
+        return;
+      }
+    }
+
+    console.error("Get job recommendations error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+
 
 export const createJob = async (
   req: AuthenticatedRequest,

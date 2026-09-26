@@ -244,3 +244,51 @@ export const getJobMatches = async (
 
   return response.data;
 };
+
+export interface JobRecommendation {
+  jobId: string;
+  title: string;
+  description: string;
+  skills: string[];
+  budget: number;
+  budgetType: "fixed" | "hourly";
+  experienceLevel: "entry" | "intermediate" | "expert";
+  locationType: "remote" | "onsite" | "hybrid";
+  country: string;
+  city: string;
+  deadline?: string;
+  createdAt: string;
+  matching: {
+    matched: string[];
+    missing: string[];
+    matchedCount: number;
+    requiredCount: number;
+  };
+  experience: {
+    years: number;
+    requirement: "entry" | "intermediate" | "expert";
+    meetsRequirement: boolean;
+  };
+  reasons: string[];
+}
+
+export interface JobRecommendationsResponse {
+  success: boolean;
+  matchingMethod: "rule-based-v1";
+  developerProfileId: string;
+  recommendations: JobRecommendation[];
+  meta: {
+    returned: number;
+    excluded: {
+      noSkillMatch: number;
+      experienceRequirement: number;
+    };
+  };
+}
+
+export const getJobRecommendations =
+  async (): Promise<JobRecommendationsResponse> => {
+    const response = await api.get("/jobs/recommendations");
+
+    return response.data;
+  };
