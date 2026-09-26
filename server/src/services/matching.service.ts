@@ -60,6 +60,14 @@ export class MatchingError extends Error {
   }
 }
 
+export class RecommendationError extends Error {
+  constructor(
+    public readonly code: "DEVELOPER_PROFILE_NOT_FOUND",
+  ) {
+    super(code);
+  }
+}
+
 const normalizeSkill = (skill: string): string =>
   skill.trim().toLocaleLowerCase().replace(/\s+/g, " ");
 
@@ -246,6 +254,185 @@ export const getJobMatches = async (
       excluded: {
         unavailable,
         noSkillMatch,
+      },
+    },
+  };
+};
+
+
+
+export interface JobRecommendation {
+  jobId: string;
+  title: string;
+  description: string;
+  skills: string[];
+  budget: number;
+  budgetType: "fixed" | "hourly";
+  experienceLevel: ExperienceRequirement;
+  locationType: "remote" | "onsite" | "hybrid";
+  country: string;
+  city: string;
+  deadline?: Date;
+  createdAt: Date;
+  matching: {
+    matched: string[];
+    missing: string[];
+    matchedCount: number;
+    requiredCount: number;
+  };
+  experience: {
+    years: number;
+    requirement: ExperienceRequirement;
+    meetsRequirement: boolean;
+  };
+  reasons: string[];
+}
+
+export interface JobRecommendationsResult {
+  developerProfileId: string;
+  recommendations: JobRecommendation[];
+  meta: {
+    returned: number;
+    excluded: {
+      noSkillMatch: number;
+      experienceRequirement: number;
+    };
+  };
+}
+
+export const getJobRecommendations = async (
+  requesterId: string,
+): Promise<JobRecommendationsResult> => {
+  const developer = await DeveloperProfile.findOne({
+    user: requesterId,
+  }).lean();
+
+  if (!developer) {
+    throw new RecommendationError("DEVELOPER_PROFILE_NOT_FOUND");
+  }
+
+  const developerSkills = new Set(
+    uniqueNormalizedSkills(developer.skills),
+  );
+
+  const now = new Date();
+
+const jobs = await Job.find({
+  status: "open",
+  $or: [
+    { deadline: { $exists: false } },
+    { deadline: null },
+    { deadline: { $gte: now } },
+  ],
+})
+  .sort({ createdAt: -1 })
+  .lean();
+
+  let noSkillMatch = 0;
+  let experienceRequirement = 0;
+
+  const recommendations: JobRecommendation[] = jobs.flatMap((job) => {
+    const requiredSkills = uniqueNormalizedSkills(job.skills);
+
+    const matched = requiredSkills.filter((skill) =>
+      developerSkills.has(skill),
+    );
+
+    if (matched.length === 0) {
+      noSkillMatch += 1;
+      return [];
+    }
+
+    const missing = requiredSkills.filter(
+      (skill) => !developerSkills.has(skill),
+    );
+
+    const requirement = job.experienceLevel;
+
+    const meetsRequirement =
+      developer.experience >= EXPERIENCE_THRESHOLDS[requirement];
+
+    if (!meetsRequirement) {
+      experienceRequirement += 1;
+      return [];
+    }
+
+    const reasons = [
+      `Matches ${matched.length} of ${requiredSkills.length} listed job skills`,
+      `Meets the ${requirement} experience requirement`,
+    ];
+
+    if (developer.availability === "available") {
+      reasons.push("You are currently available");
+    } else if (developer.availability === "busy") {
+      reasons.push("You are currently busy");
+    }
+
+    return [
+      {
+        jobId: job._id.toString(),
+        title: job.title,
+        description: job.description,
+        skills: job.skills,
+        budget: job.budget,
+        budgetType: job.budgetType,
+        experienceLevel: job.experienceLevel,
+        locationType: job.locationType,
+        country: job.country,
+        city: job.city,
+        deadline: job.deadline,
+        createdAt: job.createdAt,
+        matching: {
+          matched,
+          missing,
+          matchedCount: matched.length,
+          requiredCount: requiredSkills.length,
+        },
+        experience: {
+          years: developer.experience,
+          requirement,
+          meetsRequirement,
+        },
+        reasons,
+      },
+    ];
+  });
+
+  recommendations.sort((left, right) => {
+    if (
+      right.matching.matchedCount !==
+      left.matching.matchedCount
+    ) {
+      return (
+        right.matching.matchedCount -
+        left.matching.matchedCount
+      );
+    }
+
+    if (
+      right.experience.meetsRequirement !==
+      left.experience.meetsRequirement
+    ) {
+      return (
+        Number(right.experience.meetsRequirement) -
+        Number(left.experience.meetsRequirement)
+      );
+    }
+
+    return (
+      right.createdAt.getTime() -
+      left.createdAt.getTime()
+    );
+  });
+
+  return {
+    developerProfileId: developer._id.toString(),
+    recommendations,
+    meta: {
+      returned: recommendations.length,
+      excluded: {
+        noSkillMatch,
+        experienceRequirement,
       },
     },
   };
