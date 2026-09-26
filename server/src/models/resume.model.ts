@@ -48,7 +48,10 @@ export interface IResume extends Document {
   projects: IResumeProject[];
   certifications: IResumeCertification[];
 
-  template: string;
+    template: string;
+
+  isPublic: boolean;
+  publicSlug?: string;
 
   createdAt: Date;
   updatedAt: Date;
@@ -249,10 +252,24 @@ const resumeSchema = new Schema<IResume>(
       default: [],
     },
 
-    template: {
+        template: {
       type: String,
       default: "classic",
       enum: ["classic", "modern", "minimal"],
+    },
+
+    isPublic: {
+      type: Boolean,
+      default: false,
+    },
+
+    publicSlug: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+      lowercase: true,
+      maxlength: 120,
     },
   },
   {

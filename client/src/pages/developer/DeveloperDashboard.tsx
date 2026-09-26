@@ -52,9 +52,11 @@ const DeveloperDashboard = () => {
     path: "/developer/jobs/recommendations",
   },
   { label: "Applications", icon: FileText, path: "/applications" },
+  { label: "Resume Builder", icon: FileText, path: "/resume" },
   { label: "My Profile", icon: UserRound, path: "/profile" },
   { label: "Settings", icon: Settings, path: "/settings" },
 ];
+
 
   const handleLogout = async () => {
     try {

@@ -41,6 +41,8 @@ const ResumeBuilder = () => {
 const [template, setTemplate] = useState<
   "classic" | "modern" | "minimal"
 >("classic");
+const [isPublic, setIsPublic] = useState(false);
+
 
   const [experience, setExperience] = useState<
     {
@@ -127,6 +129,7 @@ setCertifications(
 );
 
 setTemplate(resume.template ?? "classic");
+setIsPublic(resume.isPublic ?? false);
 }, [resumeQuery.data]);
 
 
@@ -321,6 +324,7 @@ setTemplate(resume.template ?? "classic");
       projects,
       certifications,
       template,
+      isPublic,
     };
 
     try {
@@ -443,7 +447,20 @@ setTemplate(resume.template ?? "classic");
           ? "Improving..."
           : "✨ Improve with AI"}
       </button>
+<label className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700">
+  <input
+    type="checkbox"
+    checked={isPublic}
+    onChange={(event) =>
+      setIsPublic(event.target.checked)
+    }
+    className="h-4 w-4 accent-emerald-600"
+  />
 
+  <span>
+    {isPublic ? "Public Resume" : "Private Resume"}
+  </span>
+</label>
       <button
         type="button"
         onClick={handleSave}

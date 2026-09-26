@@ -35,6 +35,7 @@ import ClientPublicProfile from "@/pages/client/ClientPublicProfile";
 
 
 import ResumeBuilder from "@/pages/developer/ResumeBuilder";
+import PublicResume from "@/pages/public/PublicResume";
 
 const AppRoutes = () => {
 return (
@@ -48,6 +49,11 @@ return (
   element={<ForgotPassword />}
 />
 
+
+<Route
+  path="/resume/:slug"
+  element={<PublicResume />}
+/>
 <Route
   path="/clients/:userId"
   element={<ClientPublicProfile />}

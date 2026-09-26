@@ -48,11 +48,14 @@ export const createResumeSchema = z.object({
 
   certifications: z.array(certificationSchema).max(20).default([]),
 
-  template: z.enum([
+    template: z.enum([
     "classic",
     "modern",
     "minimal",
   ]).default("classic"),
+
+  isPublic: z.boolean().default(false),
+
 });
 
 export const updateResumeSchema =

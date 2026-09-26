@@ -51,6 +51,9 @@ export interface Resume {
 
   template: "classic" | "modern" | "minimal";
 
+  isPublic: boolean;
+  publicSlug?: string;
+
   createdAt: string;
   updatedAt: string;
 }
@@ -64,6 +67,7 @@ export interface CreateResumeData {
   projects: ResumeProject[];
   certifications: ResumeCertification[];
   template: "classic" | "modern" | "minimal";
+  isPublic?: boolean;
 }
 
 export type UpdateResumeData = Partial<CreateResumeData>;
@@ -92,6 +96,35 @@ export const updateMyResume = async (
   data: UpdateResumeData,
 ): Promise<ResumeResponse> => {
   const response = await api.put("/resumes/me", data);
+
+  return response.data;
+};
+
+
+export interface PublicResume {
+  publicSlug: string;
+  name: string;
+  headline?: string;
+  professionalSummary?: string;
+  skills: string[];
+  experience: ResumeExperience[];
+  education: ResumeEducation[];
+  projects: ResumeProject[];
+  certifications: ResumeCertification[];
+  template: "classic" | "modern" | "minimal";
+}
+
+interface PublicResumeResponse {
+  success: boolean;
+  resume: PublicResume;
+}
+
+export const getPublicResume = async (
+  slug: string,
+): Promise<PublicResumeResponse> => {
+  const response = await api.get(
+    `/resumes/public/${slug}`,
+  );
 
   return response.data;
 };
