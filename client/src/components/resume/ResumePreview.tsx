@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import html2pdf from "html2pdf.js";
+import { Download } from "lucide-react";
 
 interface ResumeExperienceItem {
   company: string;
@@ -88,37 +89,77 @@ const ResumePreview = ({
   const templateName =
     template.charAt(0).toUpperCase() + template.slice(1);
     const resumeRef = useRef<HTMLDivElement>(null);
-    const handleDownloadPDF = () => {
+    
+    const handleDownloadPDF = async () => {
   if (!resumeRef.current) return;
+
+  const element = resumeRef.current;
 
   const options = {
     margin: 0,
     filename: "afrilance-resume.pdf",
     image: {
-  type: "jpeg" as const,
-  quality: 0.98,
-},
+      type: "jpeg" as const,
+      quality: 0.98,
+    },
     html2canvas: {
       scale: 2,
       useCORS: true,
       backgroundColor: "#ffffff",
+      onclone: (clonedDocument: Document) => {
+        const clonedElement = clonedDocument.querySelector(
+          "[data-resume-preview]",
+        );
+
+        if (!clonedElement) return;
+
+        const elements = clonedElement.querySelectorAll("*");
+
+        elements.forEach((el) => {
+          const element = el as HTMLElement;
+          const computedStyle =
+            clonedDocument.defaultView?.getComputedStyle(element);
+
+          if (!computedStyle) return;
+
+          const properties = [
+            "color",
+            "backgroundColor",
+            "borderTopColor",
+            "borderRightColor",
+            "borderBottomColor",
+            "borderLeftColor",
+          ] as const;
+
+          properties.forEach((property) => {
+            const value = computedStyle[property];
+
+            if (value.includes("oklch")) {
+              element.style[property] = "#000000";
+            }
+          });
+        });
+      },
     },
     jsPDF: {
-  unit: "mm",
-  format: "a4",
-  orientation: "portrait" as const,
-},
+      unit: "mm",
+      format: "a4",
+      orientation: "portrait" as const,
+    },
     pagebreak: {
       mode: ["css", "legacy"],
     },
   };
 
-  html2pdf()
-    .set(options)
-    .from(resumeRef.current)
-    .save();
+  try {
+    await html2pdf()
+      .set(options)
+      .from(element)
+      .save();
+  } catch (error) {
+    console.error("PDF export failed:", error);
+  }
 };
-
   return (
     <section className="lg:sticky lg:top-24 lg:self-start">
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -139,13 +180,14 @@ const ResumePreview = ({
     {templateName}
   </span>
 
-  <button
-    type="button"
-    onClick={handleDownloadPDF}
-    className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700"
-  >
-    Download PDF
-  </button>
+ <button
+  type="button"
+  onClick={handleDownloadPDF}
+  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700"
+>
+  <Download className="h-4 w-4" />
+  Download PDF
+</button>
 </div>
         </div>
 
@@ -153,6 +195,7 @@ const ResumePreview = ({
         <div className="bg-slate-200 p-4 sm:p-8">
          <div
   ref={resumeRef}
+  data-resume-preview
   className={`mx-auto min-h-[700px] max-w-[760px] p-7 shadow-lg sm:p-10 ${currentTemplate.container}`}
 >
             {/* Resume header */}
