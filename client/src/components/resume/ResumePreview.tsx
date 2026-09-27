@@ -93,116 +93,190 @@ const ResumePreview = ({
     template.charAt(0).toUpperCase() + template.slice(1);
 
   const resumeRef = useRef<HTMLDivElement>(null);
+  
+  
+  
+const handleDownloadPDF = async () => {
+  if (!resumeRef.current) return;
 
-  const handleDownloadPDF = async () => {
-    if (!resumeRef.current) return;
+  const element = resumeRef.current;
 
-    const element = resumeRef.current;
+  try {
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff",
 
-    try {
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff",
+      onclone: (clonedDocument) => {
+        const clonedElement = clonedDocument.querySelector(
+          "[data-resume-preview]",
+        ) as HTMLElement | null;
 
-        onclone: (clonedDocument) => {
-          const clonedElement = clonedDocument.querySelector(
-            "[data-resume-preview]",
-          ) as HTMLElement | null;
+        if (!clonedElement) return;
 
-          if (!clonedElement) return;
+        const originalElements = [
+          element,
+          ...Array.from(element.querySelectorAll("*")),
+        ];
 
-          const originalElements = [
-            element,
-            ...Array.from(element.querySelectorAll("*")),
+        const clonedElements = [
+          clonedElement,
+          ...Array.from(
+            clonedElement.querySelectorAll("*"),
+          ),
+        ];
+
+        originalElements.forEach((originalNode, index) => {
+          const clonedNode = clonedElements[index];
+
+          if (!clonedNode) return;
+
+          const originalElement =
+            originalNode as HTMLElement;
+
+          const clonedElementNode =
+            clonedNode as HTMLElement;
+
+          const computedStyle =
+            window.getComputedStyle(originalElement);
+
+          const safeProperties = [
+            "color",
+            "background-color",
+            "border-top-color",
+            "border-right-color",
+            "border-bottom-color",
+            "border-left-color",
+            "outline-color",
+            "text-decoration-color",
+            "box-shadow",
           ];
 
-          const clonedElements = [
-            clonedElement,
-            ...Array.from(clonedElement.querySelectorAll("*")),
-          ];
+          safeProperties.forEach((property) => {
+            const value =
+              computedStyle.getPropertyValue(property);
 
-          /*
-           * Copy computed styles from the original DOM
-           * into inline styles on the cloned DOM.
-           *
-           * This preserves the Tailwind layout while
-           * preventing html2canvas from parsing Tailwind's
-           * oklch() stylesheet values.
-           */
-          originalElements.forEach((originalNode, index) => {
-            const clonedNode = clonedElements[index];
+            if (!value) return;
 
-            if (!clonedNode) return;
+            // Never pass oklch() to html2canvas
+            if (value.includes("oklch")) return;
 
-            const originalElement =
-              originalNode as HTMLElement;
-
-            const clonedElementNode =
-              clonedNode as HTMLElement;
-
-            const computedStyle =
-              window.getComputedStyle(originalElement);
-
-            for (let i = 0; i < computedStyle.length; i++) {
-              const property = computedStyle[i];
-
-              const value =
-                computedStyle.getPropertyValue(property);
-
-              if (value) {
-                clonedElementNode.style.setProperty(
-                  property,
-                  value,
-                );
-              }
-            }
+            clonedElementNode.style.setProperty(
+              property,
+              value,
+            );
           });
 
-          /*
-           * Remove Tailwind styles after the computed styles
-           * have been copied inline.
-           */
-          clonedDocument
-            .querySelectorAll(
-              "style, link[rel='stylesheet']",
-            )
-            .forEach((node) => node.remove());
+          const layoutProperties = [
+            "display",
+            "position",
+            "width",
+            "height",
+            "min-height",
+            "max-width",
+            "padding",
+            "padding-top",
+            "padding-right",
+            "padding-bottom",
+            "padding-left",
+            "margin",
+            "margin-top",
+            "margin-right",
+            "margin-bottom",
+            "margin-left",
+            "font-family",
+            "font-size",
+            "font-weight",
+            "line-height",
+            "letter-spacing",
+            "text-align",
+            "text-transform",
+            "white-space",
+            "flex",
+            "flex-direction",
+            "flex-wrap",
+            "gap",
+            "align-items",
+            "justify-content",
+            "border-width",
+            "border-style",
+            "border-radius",
+            "overflow",
+          ];
 
-          /*
-           * Safe PDF colors.
-           */
-          clonedElement.style.backgroundColor = "#ffffff";
-          clonedElement.style.color = "#0f172a";
-          clonedElement.style.boxShadow = "none";
-        },
-      });
+          layoutProperties.forEach((property) => {
+            const value =
+              computedStyle.getPropertyValue(property);
 
-      const imageData = canvas.toDataURL(
-        "image/jpeg",
-        0.98,
-      );
+            if (value) {
+              clonedElementNode.style.setProperty(
+                property,
+                value,
+              );
+            }
+          });
+        });
 
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-      });
+        // Remove Tailwind styles from the cloned document.
+        clonedDocument
+          .querySelectorAll(
+            "style, link[rel='stylesheet']",
+          )
+          .forEach((node) => node.remove());
 
-      const pageWidth =
-        pdf.internal.pageSize.getWidth();
+        // Safe PDF colors.
+        clonedElement.style.backgroundColor =
+          "#ffffff";
 
-      const pageHeight =
-        pdf.internal.pageSize.getHeight();
+        clonedElement.style.color = "#0f172a";
 
-      const imageWidth = pageWidth;
+        clonedElement.style.boxShadow = "none";
+      },
+    });
 
-      const imageHeight =
-        (canvas.height * imageWidth) / canvas.width;
+    const imageData = canvas.toDataURL(
+      "image/jpeg",
+      0.98,
+    );
 
-      let heightLeft = imageHeight;
+    const pdf = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+    });
 
-      let position = 0;
+    const pageWidth =
+      pdf.internal.pageSize.getWidth();
+
+    const pageHeight =
+      pdf.internal.pageSize.getHeight();
+
+    const imageWidth = pageWidth;
+
+    const imageHeight =
+      (canvas.height * imageWidth) /
+      canvas.width;
+
+    let heightLeft = imageHeight;
+    let position = 0;
+
+    // First page
+    pdf.addImage(
+      imageData,
+      "JPEG",
+      0,
+      position,
+      imageWidth,
+      imageHeight,
+    );
+
+    heightLeft -= pageHeight;
+
+    // Additional pages
+    while (heightLeft > 0) {
+      position = heightLeft - imageHeight;
+
+      pdf.addPage();
 
       pdf.addImage(
         imageData,
@@ -214,33 +288,26 @@ const ResumePreview = ({
       );
 
       heightLeft -= pageHeight;
-
-      /*
-       * Add additional pages when the resume
-       * is longer than one A4 page.
-       */
-      while (heightLeft > 0) {
-        position = heightLeft - imageHeight;
-
-        pdf.addPage();
-
-        pdf.addImage(
-          imageData,
-          "JPEG",
-          0,
-          position,
-          imageWidth,
-          imageHeight,
-        );
-
-        heightLeft -= pageHeight;
-      }
-
-      pdf.save("afrilance-resume.pdf");
-    } catch (error) {
-      console.error("PDF export failed:", error);
     }
-  };
+
+    pdf.save("afrilance-resume.pdf");
+
+  } catch (error) {
+    console.error(
+      "PDF export failed:",
+      error,
+    );
+
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unable to generate PDF.";
+
+    alert(
+      `PDF export failed:\n\n${message}`,
+    );
+  }
+};;
 
   return (
     <section className="lg:sticky lg:top-24 lg:self-start">
