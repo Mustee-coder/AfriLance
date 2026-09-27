@@ -1,5 +1,6 @@
 import { useRef } from "react";
-import html2pdf from "html2pdf.js";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 import { Download } from "lucide-react";
 
 interface ResumeExperienceItem {
@@ -64,6 +65,7 @@ const ResumePreview = ({
       skill:
         "bg-slate-100 text-slate-700 border border-slate-200",
     },
+
     modern: {
       container: "bg-white text-slate-900",
       header: "border-b-2 border-emerald-600 pb-5",
@@ -73,6 +75,7 @@ const ResumePreview = ({
       skill:
         "bg-emerald-50 text-emerald-700 border border-emerald-100",
     },
+
     minimal: {
       container: "bg-white text-slate-900",
       header: "border-b border-slate-300 pb-5",
@@ -88,83 +91,162 @@ const ResumePreview = ({
 
   const templateName =
     template.charAt(0).toUpperCase() + template.slice(1);
-    const resumeRef = useRef<HTMLDivElement>(null);
-    
-    const handleDownloadPDF = async () => {
-  if (!resumeRef.current) return;
 
-  const element = resumeRef.current;
+  const resumeRef = useRef<HTMLDivElement>(null);
 
-  const options = {
-    margin: 0,
-    filename: "afrilance-resume.pdf",
-    image: {
-      type: "jpeg" as const,
-      quality: 0.98,
-    },
-    html2canvas: {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: "#ffffff",
-      onclone: (clonedDocument: Document) => {
-        const clonedElement = clonedDocument.querySelector(
-          "[data-resume-preview]",
-        );
+  const handleDownloadPDF = async () => {
+    if (!resumeRef.current) return;
 
-        if (!clonedElement) return;
+    const element = resumeRef.current;
 
-        const elements = clonedElement.querySelectorAll("*");
+    try {
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
 
-        elements.forEach((el) => {
-          const element = el as HTMLElement;
-          const computedStyle =
-            clonedDocument.defaultView?.getComputedStyle(element);
+        onclone: (clonedDocument) => {
+          const clonedElement = clonedDocument.querySelector(
+            "[data-resume-preview]",
+          ) as HTMLElement | null;
 
-          if (!computedStyle) return;
+          if (!clonedElement) return;
 
-          const properties = [
-            "color",
-            "backgroundColor",
-            "borderTopColor",
-            "borderRightColor",
-            "borderBottomColor",
-            "borderLeftColor",
-          ] as const;
+          const originalElements = [
+            element,
+            ...Array.from(element.querySelectorAll("*")),
+          ];
 
-          properties.forEach((property) => {
-            const value = computedStyle[property];
+          const clonedElements = [
+            clonedElement,
+            ...Array.from(clonedElement.querySelectorAll("*")),
+          ];
 
-            if (value.includes("oklch")) {
-              element.style[property] = "#000000";
+          /*
+           * Copy computed styles from the original DOM
+           * into inline styles on the cloned DOM.
+           *
+           * This preserves the Tailwind layout while
+           * preventing html2canvas from parsing Tailwind's
+           * oklch() stylesheet values.
+           */
+          originalElements.forEach((originalNode, index) => {
+            const clonedNode = clonedElements[index];
+
+            if (!clonedNode) return;
+
+            const originalElement =
+              originalNode as HTMLElement;
+
+            const clonedElementNode =
+              clonedNode as HTMLElement;
+
+            const computedStyle =
+              window.getComputedStyle(originalElement);
+
+            for (let i = 0; i < computedStyle.length; i++) {
+              const property = computedStyle[i];
+
+              const value =
+                computedStyle.getPropertyValue(property);
+
+              if (value) {
+                clonedElementNode.style.setProperty(
+                  property,
+                  value,
+                );
+              }
             }
           });
-        });
-      },
-    },
-    jsPDF: {
-      unit: "mm",
-      format: "a4",
-      orientation: "portrait" as const,
-    },
-    pagebreak: {
-      mode: ["css", "legacy"],
-    },
+
+          /*
+           * Remove Tailwind styles after the computed styles
+           * have been copied inline.
+           */
+          clonedDocument
+            .querySelectorAll(
+              "style, link[rel='stylesheet']",
+            )
+            .forEach((node) => node.remove());
+
+          /*
+           * Safe PDF colors.
+           */
+          clonedElement.style.backgroundColor = "#ffffff";
+          clonedElement.style.color = "#0f172a";
+          clonedElement.style.boxShadow = "none";
+        },
+      });
+
+      const imageData = canvas.toDataURL(
+        "image/jpeg",
+        0.98,
+      );
+
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const pageWidth =
+        pdf.internal.pageSize.getWidth();
+
+      const pageHeight =
+        pdf.internal.pageSize.getHeight();
+
+      const imageWidth = pageWidth;
+
+      const imageHeight =
+        (canvas.height * imageWidth) / canvas.width;
+
+      let heightLeft = imageHeight;
+
+      let position = 0;
+
+      pdf.addImage(
+        imageData,
+        "JPEG",
+        0,
+        position,
+        imageWidth,
+        imageHeight,
+      );
+
+      heightLeft -= pageHeight;
+
+      /*
+       * Add additional pages when the resume
+       * is longer than one A4 page.
+       */
+      while (heightLeft > 0) {
+        position = heightLeft - imageHeight;
+
+        pdf.addPage();
+
+        pdf.addImage(
+          imageData,
+          "JPEG",
+          0,
+          position,
+          imageWidth,
+          imageHeight,
+        );
+
+        heightLeft -= pageHeight;
+      }
+
+      pdf.save("afrilance-resume.pdf");
+    } catch (error) {
+      console.error("PDF export failed:", error);
+    }
   };
 
-  try {
-    await html2pdf()
-      .set(options)
-      .from(element)
-      .save();
-  } catch (error) {
-    console.error("PDF export failed:", error);
-  }
-};
   return (
     <section className="lg:sticky lg:top-24 lg:self-start">
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        {/* Preview header */}
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+        {/* Preview Header */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
           <div>
             <h2 className="font-bold text-slate-900">
               Live Preview
@@ -175,30 +257,30 @@ const ResumePreview = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-  <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-    {templateName}
-  </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+              {templateName}
+            </span>
 
- <button
-  type="button"
-  onClick={handleDownloadPDF}
-  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700"
->
-  <Download className="h-4 w-4" />
-  Download PDF
-</button>
-</div>
+            <button
+              type="button"
+              onClick={handleDownloadPDF}
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700"
+            >
+              <Download className="h-4 w-4" />
+              Download PDF
+            </button>
+          </div>
         </div>
 
-        {/* Resume paper */}
+        {/* Resume Paper */}
         <div className="bg-slate-200 p-4 sm:p-8">
-         <div
-  ref={resumeRef}
-  data-resume-preview
-  className={`mx-auto min-h-[700px] max-w-[760px] p-7 shadow-lg sm:p-10 ${currentTemplate.container}`}
->
-            {/* Resume header */}
+          <div
+            ref={resumeRef}
+            data-resume-preview
+            className={`mx-auto min-h-[700px] max-w-[760px] p-7 shadow-lg sm:p-10 ${currentTemplate.container}`}
+          >
+            {/* Resume Header */}
             <div className={currentTemplate.header}>
               <p
                 className={`text-[10px] font-bold uppercase tracking-[0.2em] ${currentTemplate.accentText}`}
@@ -349,7 +431,8 @@ const ResumePreview = ({
                           )}
                         </div>
 
-                        {(item.startDate || item.endDate) && (
+                        {(item.startDate ||
+                          item.endDate) && (
                           <p className="text-xs text-slate-400">
                             {item.startDate || "Start date"}
                             {" — "}
@@ -457,7 +540,9 @@ const ResumePreview = ({
 
                         {certification.credentialUrl && (
                           <a
-                            href={certification.credentialUrl}
+                            href={
+                              certification.credentialUrl
+                            }
                             target="_blank"
                             rel="noopener noreferrer"
                             className={`mt-2 block break-all text-xs font-medium hover:underline ${currentTemplate.accentText}`}
