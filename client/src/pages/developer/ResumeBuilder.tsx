@@ -407,86 +407,95 @@ setIsPublic(resume.isPublic ?? false);
   return (
     <div className="min-h-screen bg-slate-100">
       {/* Header */}
-<header className="relative sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
-  <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6">
-    <div className="flex items-center gap-3">
-      <button
-        type="button"
-        onClick={() => window.history.back()}
-        className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-emerald-600"
-        aria-label="Go back"
-      >
-        ←
-      </button>
+<header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
+  <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 sm:py-4">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      {/* Left: Back + Title */}
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => window.history.back()}
+          className="shrink-0 rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-emerald-600"
+          aria-label="Go back"
+        >
+          ←
+        </button>
 
-      <div>
-        <div className="flex items-center gap-2">
-          <h1 className="text-lg font-bold text-slate-900">
-            Resume Builder
-          </h1>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h1 className="truncate text-base font-bold text-slate-900 sm:text-lg">
+              Resume Builder
+            </h1>
 
-          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700">
-            AfriLance
-          </span>
+            <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-700 sm:text-[10px]">
+              AfriLance
+            </span>
+          </div>
+
+          <p className="hidden text-xs text-slate-500 sm:block">
+            Build your professional resume
+          </p>
         </div>
+      </div>
 
-        <p className="hidden text-xs text-slate-500 sm:block">
-          Build your professional resume
-        </p>
+      {/* Right: Actions */}
+      <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
+        {/* Improve with AI */}
+        <button
+          type="button"
+          onClick={handleImproveCV}
+          disabled={improveCVMutation.isPending}
+          className="flex-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none sm:px-4 sm:text-sm"
+        >
+          {improveCVMutation.isPending
+            ? "Improving..."
+            : "✨ Improve with AI"}
+        </button>
+
+        {/* Public / Private */}
+        <label className="flex shrink-0 cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 sm:text-sm">
+          <input
+            type="checkbox"
+            checked={isPublic}
+            onChange={(event) =>
+              setIsPublic(event.target.checked)
+            }
+            className="h-4 w-4 accent-emerald-600"
+          />
+
+          <span className="whitespace-nowrap">
+            {isPublic ? "Public Resume" : "Private Resume"}
+          </span>
+        </label>
+
+        {/* Save */}
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={isSaving}
+          className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none sm:px-5 sm:text-sm"
+        >
+          {isSaving ? "Saving..." : "Save Resume"}
+        </button>
       </div>
     </div>
 
-    <div className="flex items-center gap-2">
-      <button
-        type="button"
-        onClick={handleImproveCV}
-        disabled={improveCVMutation.isPending}
-        className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {improveCVMutation.isPending
-          ? "Improving..."
-          : "✨ Improve with AI"}
-      </button>
-<label className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700">
-  <input
-    type="checkbox"
-    checked={isPublic}
-    onChange={(event) =>
-      setIsPublic(event.target.checked)
-    }
-    className="h-4 w-4 accent-emerald-600"
-  />
-
-  <span>
-    {isPublic ? "Public Resume" : "Private Resume"}
-  </span>
-</label>
-      <button
-        type="button"
-        onClick={handleSave}
-        disabled={isSaving}
-        className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {isSaving ? "Saving..." : "Save Resume"}
-      </button>
-    </div>
+    {/* AI Message */}
+    {aiMessage && (
+      <div className="mt-3">
+        <div
+          className={`rounded-xl border px-4 py-3 text-sm ${
+            aiMessage.includes("successfully")
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : "border-amber-200 bg-amber-50 text-amber-700"
+          }`}
+        >
+          {aiMessage}
+        </div>
+      </div>
+    )}
   </div>
-
-  {aiMessage && (
-    <div className="mx-auto max-w-7xl px-4 pb-3 sm:px-6">
-      <div
-        className={`rounded-xl border px-4 py-3 text-sm ${
-          aiMessage.includes("successfully")
-            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-            : "border-amber-200 bg-amber-50 text-amber-700"
-        }`}
-      >
-        {aiMessage}
-      </div>
-    </div>
-  )}
 </header>
-
       {/* Main */}
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:py-8">
         <div className="grid gap-6 lg:grid-cols-[420px_minmax(0,1fr)]">
