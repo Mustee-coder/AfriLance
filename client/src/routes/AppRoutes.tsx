@@ -21,6 +21,7 @@ import JobRecommendations from "@/pages/developer/JobRecommendations";
 // Jobs
 import JobDetails from "@/pages/jobs/JobDetails";
 import ApplyJob from "@/pages/jobs/ApplyJob";
+import Chat from "@/pages/chat/Chat";
 
 // Client
 import ClientDashboard from "@/pages/client/ClientDashboard";
@@ -66,6 +67,11 @@ return (
       path="/dashboard"
       element={<DeveloperDashboard />}
     />
+    <Route
+    path="/chat"
+    element={<Chat />}
+  />
+  
     <Route
   path="/reset-password/:token"
   element={<ResetPassword />}

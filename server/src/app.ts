@@ -20,8 +20,11 @@ import reviewRoutes from "./routes/review.routes.js";
 
 
 
+
 import aiRoutes from "./routes/ai.routes.js";
 import resumeRoutes from "./routes/resume.routes.js";
+import conversationRoutes from "./routes/conversation.routes.js";
+import messageRoutes from "./routes/message.routes.js";
 
 
 
@@ -55,6 +58,8 @@ app.use("/api/reviews", reviewRoutes);
 
 app.use("/api/ai", aiRoutes);
 app.use("/api/resumes", resumeRoutes);
+app.use("/api/conversations", conversationRoutes);
+app.use("/api/conversations", messageRoutes);
 
 
 app.use(
