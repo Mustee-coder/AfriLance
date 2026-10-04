@@ -58,7 +58,7 @@ const MessageInput = ({
     }
 
     if (!socket.connected) {
-      alert("❌ Socket is not connected");
+      socket.connect();
       return;
     }
 
@@ -102,3 +102,4 @@ const MessageInput = ({
 };
 
 export default MessageInput;
+
