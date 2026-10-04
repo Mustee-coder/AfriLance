@@ -6,4 +6,5 @@ const SOCKET_URL =
 export const socket = io(SOCKET_URL, {
   withCredentials: true,
   autoConnect: false,
+  transports: ["polling"],
 });
