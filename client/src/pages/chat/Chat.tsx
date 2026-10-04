@@ -20,25 +20,26 @@ const Chat = () => {
 
   // Socket connection
   useEffect(() => {
-    const handleConnect = () => {
-      alert(`🔌 Socket connected: ${socket.id}`);
-    };
+  const handleConnect = () => {
+    alert(`🔌 Socket connected: ${socket.id}`);
+  };
 
-    const handleConnectError = (error: Error) => {
-      alert(`❌ Socket connection error: ${error.message}`);
-    };
+  const handleConnectError = (error: Error) => {
+    alert(`❌ Socket connection error: ${error.message}`);
+  };
 
-    socket.on("connect", handleConnect);
-    socket.on("connect_error", handleConnectError);
+  socket.on("connect", handleConnect);
+  socket.on("connect_error", handleConnectError);
 
+  if (!socket.connected) {
     socket.connect();
+  }
 
-    return () => {
-      socket.off("connect", handleConnect);
-      socket.off("connect_error", handleConnectError);
-      socket.disconnect();
-    };
-  }, []);
+  return () => {
+    socket.off("connect", handleConnect);
+    socket.off("connect_error", handleConnectError);
+  };
+}, []);
 
   // Join conversation + receive real-time messages
   useEffect(() => {
