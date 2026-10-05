@@ -16,6 +16,7 @@ import {
 } from "../api/auth.api";
 
 import type { User } from "../types/auth";
+import { socket } from "../socket/socket";
 
 interface AuthContextType {
   user: User | null;
@@ -53,6 +54,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     initializeAuth();
   }, []);
+
+  useEffect(() => {
+    if (!user) {
+      socket.disconnect();
+    }
+  }, [user]);
 
   const login = async (data: LoginData): Promise<User> => {
     const response = await loginUser(data);
