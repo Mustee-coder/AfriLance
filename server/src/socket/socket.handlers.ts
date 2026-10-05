@@ -7,6 +7,10 @@ import {
   removeUserConnection,
 } from "./presence.service.js";
 
+type SendMessageAcknowledgement = (
+  response: { success: true } | { success: false; error: string },
+) => void;
+
 export const registerSocketHandlers = (
   io: Server,
   socket: Socket,
@@ -202,30 +206,35 @@ socket.on(
 
   socket.on(
     "send_message",
-    async (data: { conversationId: string; content: string }) => {
+    async (
+      data: { conversationId: string; content: string },
+      acknowledge?: SendMessageAcknowledgement,
+    ) => {
+      const reportFailure = (message: string) => {
+        if (typeof acknowledge === "function") {
+          acknowledge({ success: false, error: message });
+        } else {
+          socket.emit("socket_error", { message });
+        }
+      };
+
       try {
         const { conversationId, content } = data;
 
         if (!conversationId || typeof content !== "string") {
-          socket.emit("socket_error", {
-            message: "Conversation ID and message content are required",
-          });
+          reportFailure("Conversation ID and message content are required");
           return;
         }
 
         const trimmedContent = content.trim();
 
         if (!trimmedContent) {
-          socket.emit("socket_error", {
-            message: "Message content cannot be empty",
-          });
+          reportFailure("Message content cannot be empty");
           return;
         }
 
         if (trimmedContent.length > 5000) {
-          socket.emit("socket_error", {
-            message: "Message cannot exceed 5000 characters",
-          });
+          reportFailure("Message cannot exceed 5000 characters");
           return;
         }
 
@@ -235,10 +244,9 @@ socket.on(
         });
 
         if (!conversation) {
-          socket.emit("socket_error", {
-            message:
-              "You are not allowed to send messages in this conversation",
-          });
+          reportFailure(
+            "You are not allowed to send messages in this conversation",
+          );
           return;
         }
 
@@ -262,15 +270,17 @@ socket.on(
 
         io.to(roomName).emit("new_message", populatedMessage);
 
+        if (typeof acknowledge === "function") {
+          acknowledge({ success: true });
+        }
+
         console.log(
           `💬 Message sent in ${roomName} by ${userId}`,
         );
       } catch (error) {
         console.error("Send socket message error:", error);
 
-        socket.emit("socket_error", {
-          message: "Failed to send message",
-        });
+        reportFailure("Failed to send message");
       }
     },
   );
