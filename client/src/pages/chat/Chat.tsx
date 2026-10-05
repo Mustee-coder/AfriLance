@@ -9,6 +9,26 @@ import MessageList from "@/components/chat/MessageList";
 import MessageInput from "@/components/chat/MessageInput";
 import { socket } from "@/socket/socket";
 
+const mergeMessages = (
+  currentMessages: Message[],
+  incomingMessages: Message[],
+  conversationId: string,
+): Message[] => {
+  const messagesById = new Map<string, Message>();
+
+  for (const message of [...currentMessages, ...incomingMessages]) {
+    if (message.conversation === conversationId) {
+      messagesById.set(message._id, message);
+    }
+  }
+
+  return [...messagesById.values()].sort(
+    (first, second) =>
+      Date.parse(first.createdAt) - Date.parse(second.createdAt) ||
+      first._id.localeCompare(second._id),
+  );
+};
+
 const Chat = () => {
   const [selectedConversation, setSelectedConversation] =
     useState<Conversation | null>(null);
@@ -70,10 +90,9 @@ const Chat = () => {
         return;
       }
 
-      setMessages((currentMessages) => [
-        ...currentMessages,
-        message,
-      ]);
+      setMessages((currentMessages) =>
+        mergeMessages(currentMessages, [message], conversationId),
+      );
     };
 
     const handleUserTyping = (data: {
@@ -133,28 +152,44 @@ const Chat = () => {
   useEffect(() => {
     if (!selectedConversation) {
       setMessages([]);
+      setLoading(false);
+      setError("");
       return;
     }
 
+    const conversationId = selectedConversation._id;
+    let cancelled = false;
+
+    setMessages([]);
+    setLoading(true);
+    setError("");
+
     const loadMessages = async () => {
-      setLoading(true);
-      setError("");
-
       try {
-        const data = await getConversationMessages(
-          selectedConversation._id,
-        );
+        const data = await getConversationMessages(conversationId);
 
-        setMessages(data);
+        if (!cancelled) {
+          setMessages((currentMessages) =>
+            mergeMessages(currentMessages, data, conversationId),
+          );
+        }
       } catch (error) {
         console.error("Failed to load messages:", error);
-        setError("Failed to load messages");
+        if (!cancelled) {
+          setError("Failed to load messages");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
     void loadMessages();
+
+    return () => {
+      cancelled = true;
+    };
   }, [selectedConversation]);
 
   const handleBackToConversations = () => {
@@ -165,6 +200,12 @@ const Chat = () => {
     selectedConversation?.participants.find(
       (participant) => participant._id === typingUserId,
     );
+
+  const visibleMessages = selectedConversation
+    ? messages.filter(
+        (message) => message.conversation === selectedConversation._id,
+      )
+    : [];
 
   return (
     <div className="min-h-[100dvh] bg-slate-50 p-4 sm:p-6">
@@ -244,7 +285,7 @@ const Chat = () => {
                 <div className="flex min-h-0 flex-1 flex-col">
                   {/* Only this area should scroll */}
                   <div className="min-h-0 flex-1 overflow-hidden">
-                    <MessageList messages={messages} />
+                    <MessageList messages={visibleMessages} />
                   </div>
 
                   {/* Typing Indicator */}
