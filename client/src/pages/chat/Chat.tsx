@@ -49,6 +49,10 @@ const Chat = () => {
 
     const conversationId = selectedConversation._id;
 
+    const joinConversation = () => {
+      socket.emit("join_conversation", conversationId);
+    };
+
     const handleConversationJoined = (data: {
       conversationId: string;
     }) => {
@@ -101,8 +105,11 @@ const Chat = () => {
     socket.on("new_message", handleNewMessage);
     socket.on("user_typing", handleUserTyping);
     socket.on("user_stopped_typing", handleUserStoppedTyping);
+    socket.on("connect", joinConversation);
 
-    socket.emit("join_conversation", conversationId);
+    if (socket.connected) {
+      joinConversation();
+    }
 
     return () => {
       socket.off(
@@ -116,6 +123,7 @@ const Chat = () => {
         "user_stopped_typing",
         handleUserStoppedTyping,
       );
+      socket.off("connect", joinConversation);
 
       setTypingUserId(null);
     };
