@@ -7,6 +7,12 @@ import {
   removeUserConnection,
 } from "./presence.service.js";
 
+const TYPING_TTL_MS = 5_000;
+
+type TypingState = {
+  timer: ReturnType<typeof setTimeout>;
+};
+
 type SendMessageAcknowledgement = (
   response: { success: true } | { success: false; error: string },
 ) => void;
@@ -18,6 +24,44 @@ export const registerSocketHandlers = (
   const authenticatedSocket = socket as AuthenticatedSocket;
 
   const userId = authenticatedSocket.user.userId;
+  const typingStates = new Map<string, TypingState>();
+
+  const emitTypingStopped = (conversationId: string) => {
+    socket.to(`conversation:${conversationId}`).emit("user_stopped_typing", {
+      conversationId,
+      userId,
+    });
+  };
+
+  const clearTypingState = (conversationId: string, notify = true) => {
+    const typingState = typingStates.get(conversationId);
+
+    if (!typingState) {
+      return false;
+    }
+
+    clearTimeout(typingState.timer);
+    typingStates.delete(conversationId);
+
+    if (notify) {
+      emitTypingStopped(conversationId);
+    }
+
+    return true;
+  };
+
+  const refreshTypingState = (conversationId: string) => {
+    const timer = setTimeout(() => {
+      clearTypingState(conversationId);
+    }, TYPING_TTL_MS);
+
+    const previousState = typingStates.get(conversationId);
+    if (previousState) {
+      clearTimeout(previousState.timer);
+    }
+
+    typingStates.set(conversationId, { timer });
+  };
 
   const becameOnline = addUserConnection(userId);
 
@@ -78,15 +122,21 @@ socket.on(
         return;
       }
 
-      const conversation = await Conversation.findOne({
-        _id: conversationId,
-        participants: userId,
-      });
-
-      if (!conversation) {
-        socket.emit("socket_error", {
-          message: "You are not allowed to type in this conversation",
+      if (!typingStates.has(conversationId)) {
+        const conversation = await Conversation.findOne({
+          _id: conversationId,
+          participants: userId,
         });
+
+        if (!conversation) {
+          socket.emit("socket_error", {
+            message: "You are not allowed to type in this conversation",
+          });
+          return;
+        }
+      }
+
+      if (!socket.connected) {
         return;
       }
 
@@ -96,6 +146,7 @@ socket.on(
         conversationId,
         userId,
       });
+      refreshTypingState(conversationId);
     } catch (error) {
       console.error("Typing start error:", error);
 
@@ -117,6 +168,10 @@ socket.on(
           return;
         }
 
+        if (clearTypingState(conversationId)) {
+          return;
+        }
+
         const conversation = await Conversation.findOne({
           _id: conversationId,
           participants: userId,
@@ -130,12 +185,7 @@ socket.on(
           return;
         }
 
-        const roomName = `conversation:${conversationId}`;
-
-        socket.to(roomName).emit("user_stopped_typing", {
-          conversationId,
-          userId,
-        });
+        emitTypingStopped(conversationId);
       } catch (error) {
         console.error("Typing stop error:", error);
 
@@ -286,6 +336,10 @@ socket.on(
   );
 
   socket.on("disconnect", () => {
+    for (const conversationId of typingStates.keys()) {
+      clearTypingState(conversationId);
+    }
+
     const becameOffline = removeUserConnection(userId);
 
     if (becameOffline) {
@@ -297,6 +351,4 @@ socket.on(
     console.log(`🔌 Socket disconnected: ${socket.id}`);
   });
 };
-
-
 

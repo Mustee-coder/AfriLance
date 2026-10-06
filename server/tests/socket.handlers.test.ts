@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { mock, test } from "node:test";
 import type { Server, Socket } from "socket.io";
 import { Conversation } from "../src/models/conversation.model.js";
 import { Message } from "../src/models/message.model.js";
@@ -36,9 +36,15 @@ const createSocketHarness = () => {
     event: string;
     payload: unknown;
   }> = [];
+  const socketRoomEvents: Array<{
+    room: string;
+    event: string;
+    payload: unknown;
+  }> = [];
 
   const socket = {
     id: "test-socket",
+    connected: true,
     user: { userId: "developer-1", role: "developer" },
     broadcast: { emit: () => undefined },
     on: (event: string, handler: EventHandler) => {
@@ -49,7 +55,12 @@ const createSocketHarness = () => {
       socketEvents.push({ event, payload });
       return true;
     },
-    to: (room: string) => ({ emit: () => undefined, room }),
+    to: (room: string) => ({
+      emit: (event: string, payload: unknown) => {
+        socketRoomEvents.push({ room, event, payload });
+      },
+      room,
+    }),
   } as unknown as Socket;
 
   const io = {
@@ -65,8 +76,12 @@ const createSocketHarness = () => {
   return {
     handlers,
     roomEvents,
+    socketRoomEvents,
     socketEvents,
-    disconnect: () => handlers.get("disconnect")?.("test disconnect"),
+    disconnect: () => {
+      (socket as { connected: boolean }).connected = false;
+      handlers.get("disconnect")?.("test disconnect");
+    },
   };
 };
 
@@ -199,6 +214,126 @@ test("send_message acknowledges persistence failures as a failure", async () => 
     harness.disconnect();
     console.error = originalConsoleError;
     restoreCreateMessage();
+    restoreFindConversation();
+  }
+});
+
+test("typing_start creates state and refreshes it without repeated database reads", async () => {
+  let findConversationCalls = 0;
+  const restoreFindConversation = replaceMethod(
+    Conversation,
+    "findOne",
+    async () => {
+      findConversationCalls += 1;
+      return conversation;
+    },
+  );
+  const harness = createSocketHarness();
+
+  try {
+    await harness.handlers.get("typing_start")?.("conversation-1");
+    await harness.handlers.get("typing_start")?.("conversation-1");
+
+    assert.equal(findConversationCalls, 1);
+    assert.deepEqual(harness.socketRoomEvents, [
+      {
+        room: "conversation:conversation-1",
+        event: "user_typing",
+        payload: {
+          conversationId: "conversation-1",
+          userId: "developer-1",
+        },
+      },
+      {
+        room: "conversation:conversation-1",
+        event: "user_typing",
+        payload: {
+          conversationId: "conversation-1",
+          userId: "developer-1",
+        },
+      },
+    ]);
+  } finally {
+    harness.disconnect();
+    restoreFindConversation();
+  }
+});
+
+test("typing expiry clears state and emits user_stopped_typing", async () => {
+  const restoreFindConversation = replaceMethod(
+    Conversation,
+    "findOne",
+    async () => conversation,
+  );
+  const harness = createSocketHarness();
+  mock.timers.enable();
+
+  try {
+    await harness.handlers.get("typing_start")?.("conversation-1");
+    mock.timers.tick(5_000);
+
+    assert.deepEqual(harness.socketRoomEvents.at(-1), {
+      room: "conversation:conversation-1",
+      event: "user_stopped_typing",
+      payload: {
+        conversationId: "conversation-1",
+        userId: "developer-1",
+      },
+    });
+  } finally {
+    harness.disconnect();
+    mock.timers.reset();
+    restoreFindConversation();
+  }
+});
+
+test("typing_stop immediately clears active typing state", async () => {
+  const restoreFindConversation = replaceMethod(
+    Conversation,
+    "findOne",
+    async () => conversation,
+  );
+  const harness = createSocketHarness();
+
+  try {
+    await harness.handlers.get("typing_start")?.("conversation-1");
+    await harness.handlers.get("typing_stop")?.("conversation-1");
+
+    assert.deepEqual(harness.socketRoomEvents.at(-1), {
+      room: "conversation:conversation-1",
+      event: "user_stopped_typing",
+      payload: {
+        conversationId: "conversation-1",
+        userId: "developer-1",
+      },
+    });
+  } finally {
+    harness.disconnect();
+    restoreFindConversation();
+  }
+});
+
+test("disconnect clears active typing state and emits user_stopped_typing", async () => {
+  const restoreFindConversation = replaceMethod(
+    Conversation,
+    "findOne",
+    async () => conversation,
+  );
+  const harness = createSocketHarness();
+
+  try {
+    await harness.handlers.get("typing_start")?.("conversation-1");
+    harness.disconnect();
+
+    assert.deepEqual(harness.socketRoomEvents.at(-1), {
+      room: "conversation:conversation-1",
+      event: "user_stopped_typing",
+      payload: {
+        conversationId: "conversation-1",
+        userId: "developer-1",
+      },
+    });
+  } finally {
     restoreFindConversation();
   }
 });

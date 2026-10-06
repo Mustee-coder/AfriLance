@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   getConversationMessages,
   type Conversation,
@@ -37,6 +37,9 @@ const Chat = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [typingUserId, setTypingUserId] = useState<string | null>(null);
+  const typingIndicatorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   // Socket connection
   useEffect(() => {
@@ -104,6 +107,17 @@ const Chat = () => {
       }
 
       setTypingUserId(data.userId);
+
+      if (typingIndicatorTimeoutRef.current) {
+        clearTimeout(typingIndicatorTimeoutRef.current);
+      }
+
+      typingIndicatorTimeoutRef.current = setTimeout(() => {
+        setTypingUserId((currentUserId) =>
+          currentUserId === data.userId ? null : currentUserId,
+        );
+        typingIndicatorTimeoutRef.current = null;
+      }, 6_000);
     };
 
     const handleUserStoppedTyping = (data: {
@@ -143,6 +157,11 @@ const Chat = () => {
         handleUserStoppedTyping,
       );
       socket.off("connect", joinConversation);
+
+      if (typingIndicatorTimeoutRef.current) {
+        clearTimeout(typingIndicatorTimeoutRef.current);
+        typingIndicatorTimeoutRef.current = null;
+      }
 
       setTypingUserId(null);
     };
