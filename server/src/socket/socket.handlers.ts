@@ -229,6 +229,13 @@ socket.on(
           return;
         }
 
+        if (message.sender.toString() === userId) {
+          socket.emit("socket_error", {
+            message: "You are not allowed to read your own message",
+          });
+          return;
+        }
+
         if (!message.read) {
           message.read = true;
           message.readAt = new Date();
@@ -351,4 +358,3 @@ socket.on(
     console.log(`🔌 Socket disconnected: ${socket.id}`);
   });
 };
-

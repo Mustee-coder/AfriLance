@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getConversationMessages,
   type Conversation,
@@ -7,6 +7,7 @@ import {
 import ConversationList from "@/components/chat/ConversationList";
 import MessageList from "@/components/chat/MessageList";
 import MessageInput from "@/components/chat/MessageInput";
+import { useAuth } from "@/hooks/useAuth";
 import { socket } from "@/socket/socket";
 
 const mergeMessages = (
@@ -30,6 +31,7 @@ const mergeMessages = (
 };
 
 const Chat = () => {
+  const { user } = useAuth();
   const [selectedConversation, setSelectedConversation] =
     useState<Conversation | null>(null);
 
@@ -98,6 +100,25 @@ const Chat = () => {
       );
     };
 
+    const handleMessageRead = (data: {
+      messageId: string;
+      conversationId: string;
+      readBy: string;
+      readAt: string;
+    }) => {
+      if (data.conversationId !== conversationId) {
+        return;
+      }
+
+      setMessages((currentMessages) =>
+        currentMessages.map((message) =>
+          message._id === data.messageId
+            ? { ...message, read: true, readAt: data.readAt }
+            : message,
+        ),
+      );
+    };
+
     const handleUserTyping = (data: {
       conversationId: string;
       userId: string;
@@ -136,6 +157,7 @@ const Chat = () => {
     socket.on("conversation_joined", handleConversationJoined);
     socket.on("socket_error", handleSocketError);
     socket.on("new_message", handleNewMessage);
+    socket.on("message_read", handleMessageRead);
     socket.on("user_typing", handleUserTyping);
     socket.on("user_stopped_typing", handleUserStoppedTyping);
     socket.on("connect", joinConversation);
@@ -151,6 +173,7 @@ const Chat = () => {
       );
       socket.off("socket_error", handleSocketError);
       socket.off("new_message", handleNewMessage);
+      socket.off("message_read", handleMessageRead);
       socket.off("user_typing", handleUserTyping);
       socket.off(
         "user_stopped_typing",
@@ -166,6 +189,16 @@ const Chat = () => {
       setTypingUserId(null);
     };
   }, [selectedConversation]);
+
+  const handleLocalMessageRead = useCallback((messageId: string) => {
+    setMessages((currentMessages) =>
+      currentMessages.map((message) =>
+        message._id === messageId
+          ? { ...message, read: true, readAt: new Date().toISOString() }
+          : message,
+      ),
+    );
+  }, []);
 
   // Load conversation message history
   useEffect(() => {
@@ -304,7 +337,11 @@ const Chat = () => {
                 <div className="flex min-h-0 flex-1 flex-col">
                   {/* Only this area should scroll */}
                   <div className="min-h-0 flex-1 overflow-hidden">
-                    <MessageList messages={visibleMessages} />
+                    <MessageList
+                      messages={visibleMessages}
+                      currentUserId={user?.id ?? ""}
+                      onMessageRead={handleLocalMessageRead}
+                    />
                   </div>
 
                   {/* Typing Indicator */}
