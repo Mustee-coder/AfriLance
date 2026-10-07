@@ -5,6 +5,19 @@ import Application from "../models/application.model.js";
 import Job from "../models/job.model.js";
 import type { AuthenticatedRequest } from "../middleware/auth.middleware.js";
 
+interface MongoDuplicateKeyError {
+  code: number;
+}
+
+function isDuplicateKeyError(error: unknown): error is MongoDuplicateKeyError {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as MongoDuplicateKeyError).code === 11000
+  );
+}
+
 export const createConversation = async (
   req: AuthenticatedRequest,
   res: Response,
@@ -84,11 +97,35 @@ export const createConversation = async (
       return;
     }
 
-    const conversation = await Conversation.create({
-      application: application._id,
-      job: job._id,
-      participants,
-    });
+    let conversation;
+
+    try {
+      conversation = await Conversation.create({
+        application: application._id,
+        job: job._id,
+        participants,
+      });
+    } catch (error) {
+      if (isDuplicateKeyError(error)) {
+        const existingConversation = await Conversation.findOne({
+          application: application._id,
+        })
+          .populate("participants", "firstName lastName role")
+          .populate("job", "title status")
+          .populate("application");
+
+        if (existingConversation) {
+          res.status(200).json({
+            success: true,
+            message: "Conversation already exists",
+            conversation: existingConversation,
+          });
+          return;
+        }
+      }
+
+      throw error;
+    }
 
     const populatedConversation = await Conversation.findById(
       conversation._id,
@@ -209,4 +246,3 @@ export const getConversationById = async (
     });
   }
 };
-
