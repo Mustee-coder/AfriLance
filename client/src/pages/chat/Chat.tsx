@@ -30,6 +30,10 @@ const mergeMessages = (
   );
 };
 
+type SocketNotice =
+  | { kind: "connection"; message: string }
+  | { kind: "conversation"; conversationId: string; message: string };
+
 const Chat = () => {
   const { user } = useAuth();
   const [selectedConversation, setSelectedConversation] =
@@ -38,6 +42,7 @@ const Chat = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [socketNotice, setSocketNotice] = useState<SocketNotice | null>(null);
   const [typingUserId, setTypingUserId] = useState<string | null>(null);
   const [hasMoreMessages, setHasMoreMessages] = useState(false);
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
@@ -54,49 +59,60 @@ const Chat = () => {
 
   // Socket connection
   useEffect(() => {
-  const handleConnect = () => {
-    alert(`🔌 Socket connected: ${socket.id}`);
-  };
+    const handleConnect = () => {
+      setSocketNotice((currentNotice) =>
+        currentNotice?.kind === "connection" ? null : currentNotice,
+      );
+    };
 
-  const handleConnectError = (error: Error) => {
-    alert(`❌ Socket connection error: ${error.message}`);
-  };
+    const handleConnectError = (error: Error) => {
+      setSocketNotice({
+        kind: "connection",
+        message: `Socket connection error: ${error.message}`,
+      });
+    };
 
-  socket.on("connect", handleConnect);
-  socket.on("connect_error", handleConnectError);
+    socket.on("connect", handleConnect);
+    socket.on("connect_error", handleConnectError);
 
-  if (!socket.connected) {
-    socket.connect();
-  }
+    if (!socket.connected) {
+      socket.connect();
+    }
 
-  return () => {
-    socket.off("connect", handleConnect);
-    socket.off("connect_error", handleConnectError);
-  };
-}, []);
+    return () => {
+      socket.off("connect", handleConnect);
+      socket.off("connect_error", handleConnectError);
+    };
+  }, []);
 
   // Join conversation + receive real-time messages
   useEffect(() => {
     if (!selectedConversation) {
+      setSocketNotice((currentNotice) =>
+        currentNotice?.kind === "conversation" ? null : currentNotice,
+      );
       return;
     }
 
     const conversationId = selectedConversation._id;
+    setSocketNotice((currentNotice) =>
+      currentNotice?.kind === "conversation" ? null : currentNotice,
+    );
 
     const joinConversation = () => {
       socket.emit("join_conversation", conversationId);
     };
 
-    const handleConversationJoined = (data: {
-      conversationId: string;
-    }) => {
-      if (data.conversationId === conversationId) {
-        alert(`✅ Joined conversation: ${conversationId}`);
-      }
-    };
-
     const handleSocketError = (data: { message: string }) => {
-      alert(`❌ Socket error: ${data.message}`);
+      if (activeConversationIdRef.current !== conversationId) {
+        return;
+      }
+
+      setSocketNotice({
+        kind: "conversation",
+        conversationId,
+        message: `Socket error: ${data.message}`,
+      });
     };
 
     const handleNewMessage = (message: Message) => {
@@ -163,7 +179,6 @@ const Chat = () => {
       );
     };
 
-    socket.on("conversation_joined", handleConversationJoined);
     socket.on("socket_error", handleSocketError);
     socket.on("new_message", handleNewMessage);
     socket.on("message_read", handleMessageRead);
@@ -176,10 +191,6 @@ const Chat = () => {
     }
 
     return () => {
-      socket.off(
-        "conversation_joined",
-        handleConversationJoined,
-      );
       socket.off("socket_error", handleSocketError);
       socket.off("new_message", handleNewMessage);
       socket.off("message_read", handleMessageRead);
@@ -327,12 +338,35 @@ const Chat = () => {
         (message) => message.conversation === selectedConversation._id,
       )
     : [];
+  const visibleSocketNotice =
+    socketNotice?.kind === "connection" ||
+    (socketNotice?.kind === "conversation" &&
+      socketNotice.conversationId === selectedConversation?._id)
+      ? socketNotice
+      : null;
 
   return (
     <div className="min-h-[100dvh] bg-slate-50 p-4 sm:p-6">
       <h1 className="mb-4 text-2xl font-bold text-slate-950 sm:mb-6">
         Messages
       </h1>
+
+      {visibleSocketNotice && (
+        <div
+          role="alert"
+          className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
+          <span>{visibleSocketNotice.message}</span>
+          <button
+            type="button"
+            onClick={() => setSocketNotice(null)}
+            aria-label="Dismiss socket error"
+            className="shrink-0 rounded px-2 py-1 font-semibold text-red-700 transition hover:bg-red-100"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
         {/* Conversation List */}
