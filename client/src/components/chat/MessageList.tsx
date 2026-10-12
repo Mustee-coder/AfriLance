@@ -6,15 +6,49 @@ interface MessageListProps {
   messages: Message[];
   currentUserId: string;
   onMessageRead: (messageId: string) => void;
+  hasMore: boolean;
+  loadingOlder: boolean;
+  onLoadOlder: () => void;
 }
 
 const MessageList = ({
   messages,
   currentUserId,
   onMessageRead,
+  hasMore,
+  loadingOlder,
+  onLoadOlder,
 }: MessageListProps) => {
   const messageListRef = useRef<HTMLDivElement>(null);
   const emittedReadReceiptsRef = useRef(new Set<string>());
+  const pendingScrollAdjustmentRef = useRef(false);
+  const scrollAnchorRef = useRef<{
+    messageId: string;
+    offsetTop: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!loadingOlder && pendingScrollAdjustmentRef.current) {
+      const messageList = messageListRef.current;
+      const anchor = scrollAnchorRef.current;
+
+      if (messageList && anchor) {
+        const anchoredMessage = messageList.querySelector<HTMLElement>(
+          `[data-message-id="${anchor.messageId}"]`,
+        );
+
+        if (anchoredMessage) {
+          const containerTop = messageList.getBoundingClientRect().top;
+          const currentOffsetTop =
+            anchoredMessage.getBoundingClientRect().top - containerTop;
+          messageList.scrollTop += currentOffsetTop - anchor.offsetTop;
+        }
+      }
+
+      pendingScrollAdjustmentRef.current = false;
+      scrollAnchorRef.current = null;
+    }
+  }, [loadingOlder, messages.length]);
 
   useEffect(() => {
     const messageList = messageListRef.current;
@@ -59,6 +93,40 @@ const MessageList = ({
     return () => observer.disconnect();
   }, [currentUserId, messages, onMessageRead]);
 
+  const handleScroll = () => {
+    const messageList = messageListRef.current;
+
+    if (
+      !messageList ||
+      messageList.scrollTop > 120 ||
+      loadingOlder ||
+      !hasMore
+    ) {
+      return;
+    }
+
+    const firstVisibleMessage = Array.from(
+      messageList.querySelectorAll<HTMLElement>("[data-message-id]"),
+    ).find(
+      (element) =>
+        element.getBoundingClientRect().bottom >
+        messageList.getBoundingClientRect().top,
+    );
+
+    if (firstVisibleMessage) {
+      scrollAnchorRef.current = {
+        messageId: firstVisibleMessage.dataset.messageId ?? "",
+        offsetTop:
+          firstVisibleMessage.getBoundingClientRect().top -
+          messageList.getBoundingClientRect().top,
+      };
+    } else {
+      scrollAnchorRef.current = null;
+    }
+    pendingScrollAdjustmentRef.current = true;
+    onLoadOlder();
+  };
+
   if (messages.length === 0) {
     return (
       <div className="flex flex-1 items-center justify-center p-6 text-center text-slate-500">
@@ -70,8 +138,15 @@ const MessageList = ({
   return (
     <div
       ref={messageListRef}
+      onScroll={handleScroll}
       className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden bg-slate-50 p-3 sm:p-4"
     >
+      {loadingOlder && (
+        <div className="text-center text-xs text-slate-400">
+          Loading older messages...
+        </div>
+      )}
+
       {messages.map((message) => (
         <div
           key={message._id}

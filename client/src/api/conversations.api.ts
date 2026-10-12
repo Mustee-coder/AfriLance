@@ -60,12 +60,24 @@ export interface Message {
   updatedAt: string;
 }
 
+export interface MessageHistoryResponse {
+  success: boolean;
+  count: number;
+  messages: Message[];
+  pagination: {
+    hasMore: boolean;
+    nextCursor: string | null;
+  };
+}
+
 export const getConversationMessages = async (
   conversationId: string,
-): Promise<Message[]> => {
+  options: { limit?: number; cursor?: string } = {},
+): Promise<MessageHistoryResponse> => {
   const response = await api.get(
     `/conversations/${conversationId}/messages`,
+    { params: options },
   );
 
-  return response.data.messages;
+  return response.data;
 };

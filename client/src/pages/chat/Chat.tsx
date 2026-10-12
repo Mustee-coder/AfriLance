@@ -39,9 +39,18 @@ const Chat = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [typingUserId, setTypingUserId] = useState<string | null>(null);
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
+  const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
+  const historyCursorRef = useRef<string | null>(null);
+  const requestedCursorsRef = useRef(new Set<string>());
+  const loadingOlderMessagesRef = useRef(false);
+  const hasMoreMessagesRef = useRef(false);
+  const activeConversationIdRef = useRef<string | null>(null);
   const typingIndicatorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+
+  activeConversationIdRef.current = selectedConversation?._id ?? null;
 
   // Socket connection
   useEffect(() => {
@@ -200,12 +209,63 @@ const Chat = () => {
     );
   }, []);
 
+  const loadOlderMessages = useCallback(async () => {
+    const conversationId = selectedConversation?._id;
+    const cursor = historyCursorRef.current;
+
+    if (
+      !conversationId ||
+      !cursor ||
+      !hasMoreMessagesRef.current ||
+      loadingOlderMessagesRef.current ||
+      requestedCursorsRef.current.has(cursor)
+    ) {
+      return;
+    }
+
+    requestedCursorsRef.current.add(cursor);
+    loadingOlderMessagesRef.current = true;
+    setLoadingOlderMessages(true);
+
+    try {
+      const data = await getConversationMessages(conversationId, {
+        limit: 50,
+        cursor,
+      });
+
+      if (activeConversationIdRef.current !== conversationId) {
+        return;
+      }
+
+      setMessages((currentMessages) =>
+        mergeMessages(currentMessages, data.messages, conversationId),
+      );
+      historyCursorRef.current = data.pagination.nextCursor;
+      hasMoreMessagesRef.current = data.pagination.hasMore;
+      setHasMoreMessages(data.pagination.hasMore);
+    } catch (error) {
+      console.error("Failed to load older messages:", error);
+      requestedCursorsRef.current.delete(cursor);
+    } finally {
+      if (activeConversationIdRef.current === conversationId) {
+        loadingOlderMessagesRef.current = false;
+        setLoadingOlderMessages(false);
+      }
+    }
+  }, [selectedConversation]);
+
   // Load conversation message history
   useEffect(() => {
     if (!selectedConversation) {
       setMessages([]);
       setLoading(false);
       setError("");
+      setHasMoreMessages(false);
+      setLoadingOlderMessages(false);
+      loadingOlderMessagesRef.current = false;
+      historyCursorRef.current = null;
+      hasMoreMessagesRef.current = false;
+      requestedCursorsRef.current.clear();
       return;
     }
 
@@ -215,6 +275,12 @@ const Chat = () => {
     setMessages([]);
     setLoading(true);
     setError("");
+    setHasMoreMessages(false);
+    setLoadingOlderMessages(false);
+    loadingOlderMessagesRef.current = false;
+    historyCursorRef.current = null;
+    hasMoreMessagesRef.current = false;
+    requestedCursorsRef.current.clear();
 
     const loadMessages = async () => {
       try {
@@ -222,8 +288,11 @@ const Chat = () => {
 
         if (!cancelled) {
           setMessages((currentMessages) =>
-            mergeMessages(currentMessages, data, conversationId),
+            mergeMessages(currentMessages, data.messages, conversationId),
           );
+          historyCursorRef.current = data.pagination.nextCursor;
+          hasMoreMessagesRef.current = data.pagination.hasMore;
+          setHasMoreMessages(data.pagination.hasMore);
         }
       } catch (error) {
         console.error("Failed to load messages:", error);
@@ -341,6 +410,9 @@ const Chat = () => {
                       messages={visibleMessages}
                       currentUserId={user?.id ?? ""}
                       onMessageRead={handleLocalMessageRead}
+                      hasMore={hasMoreMessages}
+                      loadingOlder={loadingOlderMessages}
+                      onLoadOlder={() => void loadOlderMessages()}
                     />
                   </div>
 
