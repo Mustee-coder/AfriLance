@@ -69,12 +69,13 @@ const MessageInput = ({
       return;
     }
 
+    setSendError("");
+
     if (!socket.connected) {
       socket.connect();
       return;
     }
 
-    setSendError("");
     sendingRef.current = true;
     setSending(true);
 
@@ -102,7 +103,7 @@ const MessageInput = ({
 
         if (!acknowledgement?.success) {
           setSendError(
-            acknowledgement?.error || "The message could not be sent.",
+            `${acknowledgement?.error || "The message could not be sent."} Your draft is still here.`,
           );
           return;
         }
