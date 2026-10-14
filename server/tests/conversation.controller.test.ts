@@ -3,7 +3,10 @@ import { test } from "node:test";
 import { Conversation } from "../src/models/conversation.model.js";
 import Application from "../src/models/application.model.js";
 import Job from "../src/models/job.model.js";
-import { createConversation } from "../src/controllers/conversation.controller.js";
+import {
+  createConversation,
+  getMyConversations,
+} from "../src/controllers/conversation.controller.js";
 
 const applicationId = "507f1f77bcf86cd799439011";
 const jobId = "507f1f77bcf86cd799439012";
@@ -91,6 +94,45 @@ const createRequest = (
     body,
     user: { userId, role: "developer" },
   }) as any;
+
+test("getMyConversations populates the latest message preview", async () => {
+  const populateCalls: Array<[string, unknown?]> = [];
+  let capturedSort: unknown;
+  const conversations = [{ _id: "conversation-1" }];
+  const query = {
+    populate(path: string, selection?: unknown) {
+      populateCalls.push([path, selection]);
+      return query;
+    },
+    sort(specification: unknown) {
+      capturedSort = specification;
+      return query;
+    },
+    then: (
+      onFulfilled: (result: unknown) => unknown,
+      onRejected?: (error: unknown) => unknown,
+    ) => Promise.resolve(conversations).then(onFulfilled, onRejected),
+  };
+  const restoreFind = replaceMethod(Conversation, "find", () => query);
+  const response = createResponse();
+
+  try {
+    await getMyConversations(
+      { user: { userId: developerId, role: "developer" } } as any,
+      response as any,
+    );
+
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(
+      populateCalls.find(([path]) => path === "lastMessage"),
+      ["lastMessage", "content messageType createdAt"],
+    );
+    assert.deepEqual(capturedSort, { lastMessageAt: -1, updatedAt: -1 });
+    assert.deepEqual((response.body as any).conversations, conversations);
+  } finally {
+    restoreFind();
+  }
+});
 
 const mockAuthorizedDependencies = () => {
   const restoreApplication = replaceMethod(

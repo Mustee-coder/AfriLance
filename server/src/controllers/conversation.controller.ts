@@ -168,6 +168,7 @@ export const getMyConversations = async (
       .populate("participants", "firstName lastName role")
       .populate("job", "title status")
       .populate("application")
+      .populate("lastMessage", "content messageType createdAt")
       .sort({ lastMessageAt: -1, updatedAt: -1 });
 
     res.status(200).json({

@@ -114,25 +114,27 @@ const MessageInput = ({
   };
 
   return (
-    <div>
+    <div className="bg-white">
       <form
         onSubmit={handleSubmit}
-        className="flex w-full gap-2 border-t border-slate-200 bg-white p-3 sm:p-4"
+        className="flex w-full items-center gap-2.5 p-3 sm:gap-3 sm:px-5 sm:py-4"
       >
         <input
           type="text"
           value={content}
           onChange={(event) => handleTyping(event.target.value)}
           placeholder="Type a message..."
+          aria-label="Type a message"
+          autoComplete="off"
           maxLength={5000}
           disabled={sending}
-          className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 sm:px-4"
+          className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-500 focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-600/15 disabled:cursor-wait disabled:opacity-70 sm:px-4"
         />
 
         <button
           type="submit"
           disabled={!content.trim() || sending}
-          className="shrink-0 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white shadow-sm shadow-emerald-600/20 transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 sm:px-5"
+          className="shrink-0 rounded-xl bg-emerald-700 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600 disabled:shadow-none sm:px-5"
         >
           {sending ? "Sending..." : "Send"}
         </button>

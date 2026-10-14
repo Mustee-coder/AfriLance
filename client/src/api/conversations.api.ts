@@ -1,16 +1,23 @@
 import api from "./axios";
 
 export interface ConversationParticipant {
-  _id: string;
-  firstName: string;
-  lastName: string;
-  role: "developer" | "client" | "admin";
+  _id?: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  role?: "developer" | "client" | "admin";
 }
 
 export interface ConversationJob {
+  _id?: string;
+  title?: string | null;
+  status?: "open" | "in_progress" | "completed" | "cancelled";
+}
+
+export interface ConversationLastMessage {
   _id: string;
-  title: string;
-  status: "open" | "in_progress" | "completed" | "cancelled";
+  content: string;
+  messageType: "text" | "image" | "file";
+  createdAt: string;
 }
 
 export interface Conversation {
@@ -26,9 +33,9 @@ export interface Conversation {
     createdAt: string;
     updatedAt: string;
   };
-  job: ConversationJob;
-  participants: ConversationParticipant[];
-  lastMessage?: string;
+  job?: ConversationJob | null;
+  participants?: Array<ConversationParticipant | null> | null;
+  lastMessage?: ConversationLastMessage | string | null;
   lastMessageAt?: string;
   createdAt: string;
   updatedAt: string;
