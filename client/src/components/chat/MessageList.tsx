@@ -2,6 +2,9 @@ import { Fragment, useEffect, useRef } from "react";
 import type { Message } from "@/api/conversations.api";
 import { socket } from "@/socket/socket";
 
+const normalizeUserId = (value: string | null | undefined): string =>
+  value?.trim().toLowerCase() ?? "";
+
 interface MessageListProps {
   messages: Message[];
   currentUserId: string;
@@ -61,6 +64,7 @@ const MessageList = ({
   loadingOlder,
   onLoadOlder,
 }: MessageListProps) => {
+  const normalizedCurrentUserId = normalizeUserId(currentUserId);
   const messageListRef = useRef<HTMLDivElement>(null);
   const emittedReadReceiptsRef = useRef(new Set<string>());
   const pendingScrollAdjustmentRef = useRef(false);
@@ -107,13 +111,15 @@ const MessageList = ({
           }
 
           const messageId = entry.target.getAttribute("data-message-id");
-          const senderId = entry.target.getAttribute("data-sender-id");
           const message = messages.find((item) => item._id === messageId);
+          const senderId = normalizeUserId(message?.sender?._id);
 
           if (
             !messageId ||
             !message ||
-            senderId === currentUserId ||
+            !normalizedCurrentUserId ||
+            !senderId ||
+            senderId === normalizedCurrentUserId ||
             message.read ||
             emittedReadReceiptsRef.current.has(messageId)
           ) {
@@ -133,7 +139,7 @@ const MessageList = ({
       .forEach((messageElement) => observer.observe(messageElement));
 
     return () => observer.disconnect();
-  }, [currentUserId, messages, onMessageRead]);
+  }, [normalizedCurrentUserId, messages, onMessageRead]);
 
   const handleScroll = () => {
     const messageList = messageListRef.current;
@@ -196,8 +202,10 @@ const MessageList = ({
       )}
 
       {messages.map((message, index) => {
-        const senderId = message.sender?._id ?? "";
-        const isOwnMessage = senderId === currentUserId;
+        const senderId = normalizeUserId(message.sender?._id);
+        const isOwnMessage =
+          Boolean(normalizedCurrentUserId) &&
+          senderId === normalizedCurrentUserId;
         const senderName = [message.sender?.firstName, message.sender?.lastName]
           .filter((part): part is string => Boolean(part?.trim()))
           .join(" ") || "Conversation participant";
