@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef } from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef } from "react";
 import type { Message } from "@/api/conversations.api";
 import { socket } from "@/socket/socket";
 
@@ -68,12 +68,15 @@ const MessageList = ({
   const messageListRef = useRef<HTMLDivElement>(null);
   const emittedReadReceiptsRef = useRef(new Set<string>());
   const pendingScrollAdjustmentRef = useRef(false);
+  const hasPositionedInitialMessagesRef = useRef(false);
+  const wasNearBottomRef = useRef(true);
+  const latestMessageIdRef = useRef<string | null>(null);
   const scrollAnchorRef = useRef<{
     messageId: string;
     offsetTop: number;
   } | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!loadingOlder && pendingScrollAdjustmentRef.current) {
       const messageList = messageListRef.current;
       const anchor = scrollAnchorRef.current;
@@ -94,6 +97,25 @@ const MessageList = ({
       pendingScrollAdjustmentRef.current = false;
       scrollAnchorRef.current = null;
     }
+
+    const messageList = messageListRef.current;
+    const latestMessageId = messages[messages.length - 1]?._id ?? null;
+
+    if (messageList && !pendingScrollAdjustmentRef.current) {
+      if (!hasPositionedInitialMessagesRef.current) {
+        messageList.scrollTop = messageList.scrollHeight;
+        hasPositionedInitialMessagesRef.current = true;
+        wasNearBottomRef.current = true;
+      } else if (
+        latestMessageId &&
+        latestMessageId !== latestMessageIdRef.current &&
+        wasNearBottomRef.current
+      ) {
+        messageList.scrollTop = messageList.scrollHeight;
+      }
+    }
+
+    latestMessageIdRef.current = latestMessageId;
   }, [loadingOlder, messages.length]);
 
   useEffect(() => {
@@ -143,6 +165,14 @@ const MessageList = ({
 
   const handleScroll = () => {
     const messageList = messageListRef.current;
+
+    if (messageList) {
+      wasNearBottomRef.current =
+        messageList.scrollHeight -
+          messageList.scrollTop -
+          messageList.clientHeight <=
+        120;
+    }
 
     if (
       !messageList ||
@@ -228,12 +258,16 @@ const MessageList = ({
                 <span className="h-px flex-1 bg-slate-200" />
               </div>
             )}
-            <div className={`flex w-full ${isOwnMessage ? "justify-end" : "justify-start"}`}>
+            <div
+              className={`flex w-full ${
+                isOwnMessage ? "justify-end" : "justify-start"
+              }`}
+            >
               <article
                 data-message-id={message._id}
                 data-sender-id={senderId}
                 aria-label={isOwnMessage ? "Message sent by you" : `Message from ${senderName}`}
-                className={`max-w-[88%] break-words rounded-2xl px-3.5 py-2.5 shadow-sm sm:max-w-[72%] sm:px-4 ${
+                className={`w-fit max-w-[88%] break-words rounded-2xl px-3.5 py-2.5 shadow-sm sm:max-w-[72%] sm:px-4 ${
                   isOwnMessage
                     ? "rounded-br-md bg-emerald-700 text-white"
                     : "rounded-bl-md border border-slate-200 bg-white text-slate-800"
