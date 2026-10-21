@@ -10,8 +10,12 @@ import { socket } from "@/socket/socket";
 interface ConversationListProps {
   selectedConversationId?: string;
   currentUserId: string;
+  presenceByUserId: Record<string, boolean>;
   onSelectConversation: (conversation: Conversation) => void;
 }
+
+const normalizeUserId = (value: string | null | undefined): string =>
+  value?.trim().toLowerCase() ?? "";
 
 const getParticipants = (conversation: Conversation) =>
   Array.isArray(conversation.participants)
@@ -84,6 +88,7 @@ const getLastMessagePreview = (conversation: Conversation) => {
 const ConversationList = ({
   selectedConversationId,
   currentUserId,
+  presenceByUserId,
   onSelectConversation,
 }: ConversationListProps) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -207,10 +212,18 @@ const ConversationList = ({
           const isSelected =
             selectedConversationId === conversation._id;
           const participants = getParticipants(conversation);
+          const normalizedCurrentUserId = normalizeUserId(currentUserId);
           const otherParticipant =
-            participants.find((participant) => participant._id !== currentUserId) ??
+            participants.find(
+              (participant) =>
+                normalizeUserId(participant._id) !== normalizedCurrentUserId,
+            ) ??
             participants[0];
           const participantName = getParticipantName(otherParticipant);
+          const otherParticipantId = normalizeUserId(otherParticipant?._id);
+          const participantOnline = otherParticipantId
+            ? presenceByUserId[otherParticipantId]
+            : undefined;
           const previewTime = formatTimestamp(
             (conversation.lastMessage && typeof conversation.lastMessage === "object"
               ? conversation.lastMessage.createdAt
@@ -237,8 +250,23 @@ const ConversationList = ({
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center justify-between gap-2">
-                      <span className="truncate text-sm font-semibold text-slate-900">
-                        {participantName}
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className="truncate text-sm font-semibold text-slate-900">
+                          {participantName}
+                        </span>
+                        {participantOnline !== undefined && (
+                          <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-slate-600">
+                            <span
+                              aria-hidden="true"
+                              className={`h-2 w-2 rounded-full ${
+                                participantOnline
+                                  ? "bg-emerald-500"
+                                  : "bg-slate-400"
+                              }`}
+                            />
+                            {participantOnline ? "Online" : "Offline"}
+                          </span>
+                        )}
                       </span>
                       {previewTime && (
                         <time

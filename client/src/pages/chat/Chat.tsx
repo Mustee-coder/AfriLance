@@ -34,6 +34,96 @@ type SocketNotice =
   | { kind: "connection"; message: string }
   | { kind: "conversation"; conversationId: string; message: string };
 
+type PresenceSnapshotEntry = {
+  userId: string;
+  online: boolean;
+  revision: number;
+};
+
+type PresenceSnapshotPayload = {
+  users: PresenceSnapshotEntry[];
+};
+
+type PresenceLivePayload = Pick<PresenceSnapshotEntry, "userId" | "revision">;
+
+type PresenceSnapshotErrorPayload = { message: string };
+
+type PresenceDelta = PresenceSnapshotEntry;
+
+const isPresenceLivePayload = (
+  value: Record<string, unknown>,
+): value is Record<string, unknown> & PresenceLivePayload =>
+  typeof value.userId === "string" &&
+  typeof value.revision === "number" &&
+  Number.isSafeInteger(value.revision) &&
+  value.revision >= 0;
+
+const isPresenceSnapshotErrorPayload = (
+  value: unknown,
+): value is PresenceSnapshotErrorPayload =>
+  Boolean(
+    value &&
+      typeof value === "object" &&
+      typeof (value as Record<string, unknown>).message === "string",
+  );
+
+const normalizeUserId = (value: string | null | undefined): string =>
+  value?.trim().toLowerCase() ?? "";
+
+const parsePresenceDelta = (
+  value: unknown,
+  online?: boolean,
+): PresenceDelta | null => {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const data = value as Record<string, unknown>;
+  if (online !== undefined && !isPresenceLivePayload(data)) {
+    return null;
+  }
+  const userId = normalizeUserId(
+    typeof data.userId === "string" ? data.userId : "",
+  );
+  const isOnline = online ?? data.online;
+
+  if (
+    !userId ||
+    typeof isOnline !== "boolean" ||
+    typeof data.revision !== "number" ||
+    !Number.isSafeInteger(data.revision) ||
+    data.revision < 0
+  ) {
+    return null;
+  }
+
+  return { userId, online: isOnline, revision: data.revision };
+};
+
+const parsePresenceSnapshot = (
+  value: unknown,
+): PresenceSnapshotPayload | null => {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const users = (value as Record<string, unknown>).users;
+  if (!Array.isArray(users)) {
+    return null;
+  }
+
+  const parsedUsers: PresenceDelta[] = [];
+  for (const user of users) {
+    const parsed = parsePresenceDelta(user);
+    if (!parsed) {
+      return null;
+    }
+    parsedUsers.push(parsed);
+  }
+
+  return { users: parsedUsers };
+};
+
 const Chat = () => {
   const { user } = useAuth();
   const [selectedConversation, setSelectedConversation] =
@@ -43,6 +133,9 @@ const Chat = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [socketNotice, setSocketNotice] = useState<SocketNotice | null>(null);
+  const [presenceByUserId, setPresenceByUserId] = useState<
+    Record<string, boolean>
+  >({});
   const [typingUserId, setTypingUserId] = useState<string | null>(null);
   const [hasMoreMessages, setHasMoreMessages] = useState(false);
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
@@ -54,15 +147,112 @@ const Chat = () => {
   const typingIndicatorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+  const presenceRevisionsRef = useRef(new Map<string, number>());
+  const bufferedPresenceEventsRef = useRef<PresenceDelta[]>([]);
+  const presenceSnapshotPendingRef = useRef(false);
+  const presenceSnapshotReadyRef = useRef(false);
+  const refreshAfterSnapshotRef = useRef(false);
+
+  const applyPresenceDelta = useCallback((delta: PresenceDelta) => {
+    const previousRevision = presenceRevisionsRef.current.get(delta.userId);
+    if (previousRevision !== undefined && delta.revision <= previousRevision) {
+      return;
+    }
+
+    presenceRevisionsRef.current.set(delta.userId, delta.revision);
+    setPresenceByUserId((currentPresence) => ({
+      ...currentPresence,
+      [delta.userId]: delta.online,
+    }));
+  }, []);
+
+  const requestPresenceSnapshot = useCallback(() => {
+    if (!socket.connected) {
+      return;
+    }
+
+    if (presenceSnapshotPendingRef.current) {
+      refreshAfterSnapshotRef.current = true;
+      return;
+    }
+
+    presenceSnapshotPendingRef.current = true;
+    presenceSnapshotReadyRef.current = false;
+    bufferedPresenceEventsRef.current = [];
+    socket.emit("request_presence_snapshot");
+  }, []);
+
+  const finishPresenceSnapshot = useCallback(
+    (snapshot: PresenceSnapshotPayload) => {
+      const nextRevisions = new Map<string, number>();
+      const nextPresence: Record<string, boolean> = {};
+
+      for (const user of snapshot.users) {
+        const existingRevision = nextRevisions.get(user.userId);
+        if (existingRevision !== undefined && existingRevision >= user.revision) {
+          continue;
+        }
+        nextRevisions.set(user.userId, user.revision);
+        nextPresence[user.userId] = user.online;
+      }
+
+      for (const delta of bufferedPresenceEventsRef.current) {
+        const existingRevision = nextRevisions.get(delta.userId);
+        if (existingRevision !== undefined && delta.revision <= existingRevision) {
+          continue;
+        }
+        nextRevisions.set(delta.userId, delta.revision);
+        nextPresence[delta.userId] = delta.online;
+      }
+
+      presenceRevisionsRef.current = nextRevisions;
+      bufferedPresenceEventsRef.current = [];
+      presenceSnapshotPendingRef.current = false;
+      presenceSnapshotReadyRef.current = true;
+      setPresenceByUserId(nextPresence);
+
+      if (refreshAfterSnapshotRef.current) {
+        refreshAfterSnapshotRef.current = false;
+        requestPresenceSnapshot();
+      }
+    },
+    [requestPresenceSnapshot],
+  );
+
+  const finishFailedPresenceSnapshot = useCallback(() => {
+    if (!presenceSnapshotPendingRef.current) {
+      return;
+    }
+
+    presenceSnapshotPendingRef.current = false;
+    presenceSnapshotReadyRef.current = true;
+    const bufferedEvents = bufferedPresenceEventsRef.current;
+    bufferedPresenceEventsRef.current = [];
+    for (const delta of bufferedEvents) {
+      applyPresenceDelta(delta);
+    }
+    refreshAfterSnapshotRef.current = false;
+  }, [applyPresenceDelta]);
 
   activeConversationIdRef.current = selectedConversation?._id ?? null;
 
   // Socket connection
   useEffect(() => {
+    const resetPresence = () => {
+      presenceSnapshotPendingRef.current = false;
+      presenceSnapshotReadyRef.current = false;
+      refreshAfterSnapshotRef.current = false;
+      bufferedPresenceEventsRef.current = [];
+      presenceRevisionsRef.current.clear();
+      setPresenceByUserId({});
+    };
+
     const handleConnect = () => {
+      resetPresence();
       setSocketNotice((currentNotice) =>
         currentNotice?.kind === "connection" ? null : currentNotice,
       );
+      requestPresenceSnapshot();
     };
 
     const handleConnectError = (error: Error) => {
@@ -72,18 +262,84 @@ const Chat = () => {
       });
     };
 
+    const handleDisconnect = () => {
+      resetPresence();
+    };
+
+    const handlePresenceSnapshot = (data: unknown) => {
+      const snapshot = parsePresenceSnapshot(data);
+      if (!snapshot) {
+        finishFailedPresenceSnapshot();
+        return;
+      }
+      finishPresenceSnapshot(snapshot);
+    };
+
+    const handlePresenceSnapshotError = (data: unknown) => {
+      if (isPresenceSnapshotErrorPayload(data)) {
+        console.error("Presence snapshot failed:", data.message);
+      }
+      finishFailedPresenceSnapshot();
+    };
+
+    const handlePresenceChange = (online: boolean) => (data: unknown) => {
+      const delta = parsePresenceDelta(data, online);
+      if (!delta) {
+        return;
+      }
+
+      if (!presenceSnapshotReadyRef.current) {
+        bufferedPresenceEventsRef.current.push(delta);
+        return;
+      }
+      applyPresenceDelta(delta);
+    };
+
+    const handleUserOnline = handlePresenceChange(true);
+    const handleUserOffline = handlePresenceChange(false);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        requestPresenceSnapshot();
+      }
+    };
+
     socket.on("connect", handleConnect);
     socket.on("connect_error", handleConnectError);
+    socket.on("disconnect", handleDisconnect);
+    socket.on("presence_snapshot", handlePresenceSnapshot);
+    socket.on("presence_snapshot_error", handlePresenceSnapshotError);
+    socket.on("user_online", handleUserOnline);
+    socket.on("user_offline", handleUserOffline);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    if (!socket.connected) {
+    if (socket.connected) {
+      requestPresenceSnapshot();
+    } else {
       socket.connect();
     }
 
     return () => {
       socket.off("connect", handleConnect);
       socket.off("connect_error", handleConnectError);
+      socket.off("disconnect", handleDisconnect);
+      socket.off("presence_snapshot", handlePresenceSnapshot);
+      socket.off("presence_snapshot_error", handlePresenceSnapshotError);
+      socket.off("user_online", handleUserOnline);
+      socket.off("user_offline", handleUserOffline);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      presenceSnapshotPendingRef.current = false;
+      presenceSnapshotReadyRef.current = false;
+      refreshAfterSnapshotRef.current = false;
+      bufferedPresenceEventsRef.current = [];
+      presenceRevisionsRef.current.clear();
     };
-  }, []);
+  }, [
+    applyPresenceDelta,
+    finishFailedPresenceSnapshot,
+    finishPresenceSnapshot,
+    requestPresenceSnapshot,
+  ]);
 
   // Join conversation + receive real-time messages
   useEffect(() => {
@@ -95,6 +351,7 @@ const Chat = () => {
     }
 
     const conversationId = selectedConversation._id;
+    requestPresenceSnapshot();
     setSocketNotice((currentNotice) =>
       currentNotice?.kind === "conversation" ? null : currentNotice,
     );
@@ -208,7 +465,7 @@ const Chat = () => {
 
       setTypingUserId(null);
     };
-  }, [selectedConversation]);
+  }, [requestPresenceSnapshot, selectedConversation]);
 
   const handleLocalMessageRead = useCallback((messageId: string) => {
     setMessages((currentMessages) =>
@@ -340,7 +597,8 @@ const Chat = () => {
     : [];
   const activeParticipant =
     activeParticipants.find(
-      (participant) => participant?._id !== user?.id,
+      (participant) =>
+        normalizeUserId(participant?._id) !== normalizeUserId(user?.id),
     ) ?? activeParticipants[0];
   const activeParticipantName =
     [activeParticipant?.firstName, activeParticipant?.lastName]
@@ -353,6 +611,10 @@ const Chat = () => {
       .slice(0, 2)
       .map((part) => part[0]?.toUpperCase() ?? "")
       .join("") || "?";
+  const activeParticipantId = normalizeUserId(activeParticipant?._id);
+  const activeParticipantOnline = activeParticipantId
+    ? presenceByUserId[activeParticipantId]
+    : undefined;
 
   const visibleMessages = selectedConversation
     ? messages.filter(
@@ -406,6 +668,7 @@ const Chat = () => {
             <ConversationList
               selectedConversationId={selectedConversation?._id}
               currentUserId={user?.id ?? ""}
+              presenceByUserId={presenceByUserId}
               onSelectConversation={setSelectedConversation}
             />
           </aside>
@@ -460,6 +723,19 @@ const Chat = () => {
                     <p className="truncate text-xs text-slate-500 sm:text-sm">
                       {selectedConversation.job?.title || "Project conversation"}
                     </p>
+                    {activeParticipantOnline !== undefined && (
+                      <span className="mt-1 inline-flex items-center gap-1.5 text-xs text-slate-600">
+                        <span
+                          aria-hidden="true"
+                          className={`h-2 w-2 rounded-full ${
+                            activeParticipantOnline
+                              ? "bg-emerald-500"
+                              : "bg-slate-400"
+                          }`}
+                        />
+                        {activeParticipantOnline ? "Online" : "Offline"}
+                      </span>
+                    )}
                   </div>
                   {selectedConversation.job?.status && (
                     <span className="hidden shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium capitalize text-slate-600 sm:inline-flex">

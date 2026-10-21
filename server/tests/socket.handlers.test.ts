@@ -28,7 +28,18 @@ const replaceMethod = (
   };
 };
 
-const createSocketHarness = () => {
+type HarnessOptions = {
+  userId?: string;
+  conversations?: Array<{ participants: string[] }>;
+  failPresenceLookup?: boolean;
+};
+
+const presenceFixtures = new Map<
+  string,
+  { queries: unknown[]; conversations: Array<{ participants: string[] }>; fail: boolean }
+>();
+
+const createSocketHarness = (options: HarnessOptions = {}) => {
   const handlers = new Map<string, EventHandler>();
   const socketEvents: Array<{ event: string; payload: unknown }> = [];
   const roomEvents: Array<{
@@ -41,11 +52,40 @@ const createSocketHarness = () => {
     event: string;
     payload: unknown;
   }> = [];
+  const joinedRooms: string[] = [];
+  const presenceQueries: unknown[] = [];
+  const userId = options.userId ?? "developer-1";
+  presenceFixtures.set(userId, {
+    queries: presenceQueries,
+    conversations: options.conversations ?? [],
+    fail: options.failPresenceLookup ?? false,
+  });
+  const restorePresenceFind = replaceMethod(
+    Conversation,
+    "find",
+    (query: unknown) => {
+      const queriedUserId = (query as { participants?: string }).participants;
+      const fixture = queriedUserId
+        ? presenceFixtures.get(queriedUserId)
+        : undefined;
+      fixture?.queries.push(query);
+      return {
+        select: () => ({
+          lean: async () => {
+            if (fixture?.fail) {
+              throw new Error("presence query failed");
+            }
+            return fixture?.conversations ?? [];
+          },
+        }),
+      };
+    },
+  );
 
   const socket = {
     id: "test-socket",
     connected: true,
-    user: { userId: "developer-1", role: "developer" },
+    user: { userId, role: "developer" },
     broadcast: { emit: () => undefined },
     on: (event: string, handler: EventHandler) => {
       handlers.set(event, handler);
@@ -54,6 +94,9 @@ const createSocketHarness = () => {
     emit: (event: string, payload: unknown) => {
       socketEvents.push({ event, payload });
       return true;
+    },
+    join: (room: string) => {
+      joinedRooms.push(room);
     },
     to: (room: string) => ({
       emit: (event: string, payload: unknown) => {
@@ -78,12 +121,19 @@ const createSocketHarness = () => {
     roomEvents,
     socketRoomEvents,
     socketEvents,
-    disconnect: () => {
+    joinedRooms,
+    presenceQueries,
+    restorePresenceFind,
+    removePresenceFixture: () => presenceFixtures.delete(userId),
+    disconnect: async () => {
       (socket as { connected: boolean }).connected = false;
-      handlers.get("disconnect")?.("test disconnect");
+      await handlers.get("disconnect")?.("test disconnect");
     },
   };
 };
+
+const waitForPresence = async () =>
+  new Promise<void>((resolve) => setImmediate(resolve));
 
 const createdMessage = {
   _id: "message-1",
@@ -154,7 +204,9 @@ test("send_message acknowledges successful creation and emits new_message", asyn
       },
     ]);
   } finally {
-    harness.disconnect();
+    await harness.disconnect();
+    harness.restorePresenceFind();
+    harness.removePresenceFixture();
     restore();
   }
 });
@@ -176,7 +228,9 @@ test("send_message acknowledges invalid content as a failure", async () => {
       error: "Message content cannot be empty",
     });
   } finally {
-    harness.disconnect();
+    await harness.disconnect();
+    harness.restorePresenceFind();
+    harness.removePresenceFixture();
   }
 });
 
@@ -211,7 +265,9 @@ test("send_message acknowledges persistence failures as a failure", async () => 
       error: "Failed to send message",
     });
   } finally {
-    harness.disconnect();
+    await harness.disconnect();
+    harness.restorePresenceFind();
+    harness.removePresenceFixture();
     console.error = originalConsoleError;
     restoreCreateMessage();
     restoreFindConversation();
@@ -254,7 +310,9 @@ test("typing_start creates state and refreshes it without repeated database read
       },
     ]);
   } finally {
-    harness.disconnect();
+    await harness.disconnect();
+    harness.restorePresenceFind();
+    harness.removePresenceFixture();
     restoreFindConversation();
   }
 });
@@ -281,7 +339,9 @@ test("typing expiry clears state and emits user_stopped_typing", async () => {
       },
     });
   } finally {
-    harness.disconnect();
+    await harness.disconnect();
+    harness.restorePresenceFind();
+    harness.removePresenceFixture();
     mock.timers.reset();
     restoreFindConversation();
   }
@@ -308,7 +368,9 @@ test("typing_stop immediately clears active typing state", async () => {
       },
     });
   } finally {
-    harness.disconnect();
+    await harness.disconnect();
+    harness.restorePresenceFind();
+    harness.removePresenceFixture();
     restoreFindConversation();
   }
 });
@@ -323,7 +385,9 @@ test("disconnect clears active typing state and emits user_stopped_typing", asyn
 
   try {
     await harness.handlers.get("typing_start")?.("conversation-1");
-    harness.disconnect();
+    await harness.disconnect();
+    harness.restorePresenceFind();
+    harness.removePresenceFixture();
 
     assert.deepEqual(harness.socketRoomEvents.at(-1), {
       room: "conversation:conversation-1",
@@ -335,5 +399,174 @@ test("disconnect clears active typing state and emits user_stopped_typing", asyn
     });
   } finally {
     restoreFindConversation();
+  }
+});
+
+test("presence snapshot is scoped to authenticated conversation participants", async () => {
+  const onlinePeer = createSocketHarness({ userId: "presence-online-peer" });
+  const requester = createSocketHarness({
+    userId: "presence-requester",
+    conversations: [
+      {
+        participants: [
+          "presence-requester",
+          "presence-online-peer",
+          "presence-offline-peer",
+          "presence-online-peer",
+        ],
+      },
+      {
+        participants: ["presence-requester", "presence-offline-peer"],
+      },
+    ],
+  });
+
+  try {
+    await waitForPresence();
+    await requester.handlers.get("request_presence_snapshot")?.([
+      "unrelated-user",
+    ]);
+
+    const snapshot = requester.socketEvents.find(
+      (event) => event.event === "presence_snapshot",
+    );
+    assert.deepEqual(snapshot?.payload, {
+      users: [
+        {
+          userId: "presence-online-peer",
+          online: true,
+          revision: 1,
+        },
+        {
+          userId: "presence-offline-peer",
+          online: false,
+          revision: 0,
+        },
+      ],
+    });
+    assert.deepEqual(requester.presenceQueries, [
+      { participants: "presence-requester" },
+      { participants: "presence-requester" },
+    ]);
+    assert.deepEqual(requester.joinedRooms, ["user:presence-requester"]);
+  } finally {
+    await requester.disconnect();
+    await onlinePeer.disconnect();
+    requester.restorePresenceFind();
+    requester.removePresenceFixture();
+    onlinePeer.restorePresenceFind();
+    onlinePeer.removePresenceFixture();
+  }
+});
+
+test("presence snapshot reports lookup failures without returning offline statuses", async () => {
+  const originalConsoleError = console.error;
+  console.error = () => undefined;
+  const harness = createSocketHarness({
+    userId: "presence-error-user",
+    failPresenceLookup: true,
+  });
+
+  try {
+    await harness.handlers.get("request_presence_snapshot")?.();
+
+    assert.deepEqual(harness.socketEvents.at(-1), {
+      event: "presence_snapshot_error",
+      payload: { message: "Failed to load presence snapshot" },
+    });
+    assert.equal(
+      harness.socketEvents.some((event) => event.event === "presence_snapshot"),
+      false,
+    );
+  } finally {
+    await harness.disconnect();
+    harness.restorePresenceFind();
+    harness.removePresenceFixture();
+    console.error = originalConsoleError;
+  }
+});
+
+test("presence transitions are sent only to distinct users who share a conversation", async () => {
+  const harness = createSocketHarness({
+    userId: "presence-changing-user",
+    conversations: [
+      {
+        participants: [
+          "presence-changing-user",
+          "presence-related-user",
+          "presence-related-user",
+        ],
+      },
+      {
+        participants: ["presence-changing-user", "presence-related-user"],
+      },
+    ],
+  });
+
+  try {
+    await waitForPresence();
+    assert.deepEqual(harness.roomEvents, [
+      {
+        room: "user:presence-related-user",
+        event: "user_online",
+        payload: { userId: "presence-changing-user", revision: 1 },
+      },
+    ]);
+
+    await harness.disconnect();
+    await waitForPresence();
+    assert.deepEqual(harness.roomEvents.at(-1), {
+      room: "user:presence-related-user",
+      event: "user_offline",
+      payload: { userId: "presence-changing-user", revision: 2 },
+    });
+  } finally {
+    await harness.disconnect();
+    harness.restorePresenceFind();
+    harness.removePresenceFixture();
+  }
+});
+
+test("presence remains online until the last socket disconnects", async () => {
+  const options = {
+    userId: "presence-multi-socket-user",
+    conversations: [
+      {
+        participants: [
+          "presence-multi-socket-user",
+          "presence-multi-socket-peer",
+        ],
+      },
+    ],
+  };
+  const firstSocket = createSocketHarness(options);
+  const secondSocket = createSocketHarness(options);
+
+  try {
+    await waitForPresence();
+    assert.equal(firstSocket.roomEvents.length, 1);
+    assert.equal(secondSocket.roomEvents.length, 0);
+
+    await firstSocket.disconnect();
+    await waitForPresence();
+    assert.equal(firstSocket.roomEvents.length, 1);
+    assert.equal(secondSocket.roomEvents.length, 0);
+
+    await secondSocket.disconnect();
+    await waitForPresence();
+    assert.deepEqual(secondSocket.roomEvents, [
+      {
+        room: "user:presence-multi-socket-peer",
+        event: "user_offline",
+        payload: { userId: "presence-multi-socket-user", revision: 2 },
+      },
+    ]);
+  } finally {
+    await firstSocket.disconnect();
+    await secondSocket.disconnect();
+    secondSocket.restorePresenceFind();
+    secondSocket.removePresenceFixture();
+    firstSocket.restorePresenceFind();
+    firstSocket.removePresenceFixture();
   }
 });

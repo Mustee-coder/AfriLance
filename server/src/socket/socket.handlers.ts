@@ -4,10 +4,33 @@ import { Message } from "../models/message.model.js";
 import type { AuthenticatedSocket } from "./socket.middleware.js";
 import {
   addUserConnection,
+  getUserPresence,
   removeUserConnection,
 } from "./presence.service.js";
 
 const TYPING_TTL_MS = 5_000;
+const USER_ROOM_PREFIX = "user:";
+
+const getUserRoom = (userId: string): string =>
+  `${USER_ROOM_PREFIX}${userId}`;
+
+const getConversationPeerIds = async (userId: string): Promise<string[]> => {
+  const conversations = await Conversation.find({ participants: userId })
+    .select("participants")
+    .lean();
+  const peerIds = new Set<string>();
+
+  for (const conversation of conversations) {
+    for (const participantId of conversation.participants ?? []) {
+      const peerId = String(participantId);
+      if (peerId && peerId !== userId) {
+        peerIds.add(peerId);
+      }
+    }
+  }
+
+  return [...peerIds];
+};
 
 type TypingState = {
   timer: ReturnType<typeof setTimeout>;
@@ -25,6 +48,24 @@ export const registerSocketHandlers = (
 
   const userId = authenticatedSocket.user.userId;
   const typingStates = new Map<string, TypingState>();
+
+  // This room is private to the authenticated identity and includes all of
+  // that user's active sockets.
+  void socket.join(getUserRoom(userId));
+
+  const emitPresenceTransition = async (
+    event: "user_online" | "user_offline",
+    revision: number,
+  ) => {
+    try {
+      const peerIds = await getConversationPeerIds(userId);
+      for (const peerId of peerIds) {
+        io.to(getUserRoom(peerId)).emit(event, { userId, revision });
+      }
+    } catch (error) {
+      console.error(`Failed to broadcast ${event} presence:`, error);
+    }
+  };
 
   const emitTypingStopped = (conversationId: string) => {
     socket.to(`conversation:${conversationId}`).emit("user_stopped_typing", {
@@ -66,10 +107,28 @@ export const registerSocketHandlers = (
   const becameOnline = addUserConnection(userId);
 
   if (becameOnline) {
-    socket.broadcast.emit("user_online", {
-      userId,
-    });
+    const { revision } = getUserPresence(userId);
+    void emitPresenceTransition("user_online", revision);
   }
+
+  socket.on("request_presence_snapshot", async () => {
+    try {
+      const peerIds = await getConversationPeerIds(userId);
+      // Read status and revision together after the database lookup. A client
+      // can use per-user revisions to reconcile transitions around this event.
+      const users = peerIds.map((peerId) => ({
+        userId: peerId,
+        ...getUserPresence(peerId),
+      }));
+
+      socket.emit("presence_snapshot", { users });
+    } catch (error) {
+      console.error("Presence snapshot lookup error:", error);
+      socket.emit("presence_snapshot_error", {
+        message: "Failed to load presence snapshot",
+      });
+    }
+  });
 
   socket.on("join_conversation", async (conversationId: string) => {
     try {
@@ -350,9 +409,8 @@ socket.on(
     const becameOffline = removeUserConnection(userId);
 
     if (becameOffline) {
-      socket.broadcast.emit("user_offline", {
-        userId,
-      });
+      const { revision } = getUserPresence(userId);
+      void emitPresenceTransition("user_offline", revision);
     }
 
     console.log(`🔌 Socket disconnected: ${socket.id}`);
